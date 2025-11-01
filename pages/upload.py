@@ -37,7 +37,11 @@ elif choice == "💻 Render Code":
             with open(file_path, "w") as f:
                 f.write(code)
             try:
-                subprocess.run(["manim", "-pql", file_path, "Scene"], check=True, cwd=tmpdir)
+                subprocess.run(
+                    ["manim", "-qm", "--disable_caching", "--media_dir", tmpdir, file_path, "Scene"],
+                    check=True,
+                    cwd=tmpdir
+                )
                 video_path = os.path.join(tmpdir, "media/videos/render_scene/480p15/Scene.mp4")
                 if os.path.exists(video_path):
                     path = f"videos/{uuid.uuid4()}.mp4"
