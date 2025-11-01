@@ -1,0 +1,17 @@
+streamlit
+supabase
+toml
+plotly
+pyjwt
+manim
+pandas
+requests
+aiohttp
+numpy
+watchdog
+python-dotenv
+altair
+tqdm
+psutil
+moviepy
+Pillow
