@@ -1,18 +1,19 @@
 import streamlit as st
 from utils.supabase_client import supabase
-from utils.theme import theme_toggle
-import plotly.express as px
 import pandas as pd
 
-st.set_page_config(page_title="Analytics", layout="wide")
-theme_toggle()
-st.title("📈 Analytics")
+st.title("📊 Analytics")
 
-videos = supabase.table("videos").select("likes, views, comments").execute().data or []
-if not videos:
-    st.info("No videos yet.")
+user = st.session_state.get("user")
+if not user:
+    st.warning("Please log in first!")
+    st.stop()
+
+res = supabase.table("magicals").select("title, views, likes_count, comments_count").eq("owner_id", user["id"]).execute()
+data = res.data or []
+
+if not data:
+    st.info("No magicals uploaded yet.")
 else:
-    df = pd.DataFrame(videos)
-    fig = px.bar(df, y="likes", title="Likes per Magical")
-    st.plotly_chart(fig)
-    
+    df = pd.DataFrame(data)
+    st.dataframe(df)

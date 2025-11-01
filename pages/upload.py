@@ -1,16 +1,29 @@
 import streamlit as st
 from utils.supabase_client import supabase
-from utils.theme import theme_toggle
+import uuid
 
-st.set_page_config(page_title="Upload", layout="wide")
-theme_toggle()
-st.title("📤 Upload Magical")
+st.title("⬆️ Upload Magical")
 
-username = st.text_input("Username")
-video = st.file_uploader("Select MP4", type=["mp4"])
-if video and st.button("Upload"):
-    path = f"{username}/{video.name}"
-    supabase.storage.from_("videos").upload(path, video)
-    supabase.table("videos").insert({"username": username, "video_url": path, "likes": 0, "comments": []}).execute()
-    st.success("Uploaded successfully!")
-    
+user = st.session_state.get("user")
+if not user:
+    st.warning("Please log in first!")
+    st.stop()
+
+title = st.text_input("Title")
+desc = st.text_area("Description")
+video_url = st.text_input("Video URL (YouTube/direct link)")
+code_url = st.text_input("Code URL (optional)")
+
+if st.button("Upload"):
+    if not title or not video_url:
+        st.error("Title and Video URL are required!")
+    else:
+        supabase.table("magicals").insert({
+            "id": str(uuid.uuid4()),
+            "owner_id": user["id"],
+            "title": title,
+            "description": desc,
+            "video_url": video_url,
+            "code_url": code_url
+        }).execute()
+        st.success("🎉 Magical uploaded successfully!")

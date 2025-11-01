@@ -8,7 +8,7 @@ def get_client():
         url = st.secrets["supabase"]["url"]
         key = st.secrets["supabase"]["key"]
     else:
-        secrets = toml.load("secrets.toml")
+        secrets = toml.load("../streamlit/secrets.toml")
         url = secrets["supabase"]["url"]
         key = secrets["supabase"]["key"]
     return create_client(url, key)

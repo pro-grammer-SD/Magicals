@@ -1,12 +1,5 @@
-libcairo2-dev
-libpango1.0-dev
-libgdk-pixbuf2.0-dev
-libffi-dev
-libgl1-mesa-dev
-libavcodec-dev
-libavformat-dev
-libswscale-dev
-pkg-config
 python3-dev
 ffmpeg
+libsm6
+libxext6
 build-essential
