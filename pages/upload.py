@@ -2,9 +2,10 @@ import streamlit as st
 import os
 import subprocess
 import sys
+import re
 
 st.set_page_config(page_title="🎬 Upload & Render", page_icon="🎥")
-st.header("🎬 Manim Renderer or Video Uploader")
+st.header("🎬 Upload")
 
 MEDIA_DIR = "media"
 os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -46,18 +47,14 @@ else:
                     output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
                     output_path = os.path.join(MEDIA_DIR, output_name)
 
-                    manim_exec = [sys.executable, "-m", "manim"]
-
-                    cmd = manim_exec + [
+                    cmd = [
+                        sys.executable, "-m", "manim",
                         script_path,
                         scene_name,
                         "-ql",
-                        "-o",
-                        output_name,
-                        "--media_dir",
-                        MEDIA_DIR,
-                        "--progress_bar",
-                        "display",
+                        "-o", output_name,
+                        "--media_dir", MEDIA_DIR,
+                        "--progress_bar", "display"
                     ]
 
                     try:
@@ -71,31 +68,38 @@ else:
                         )
 
                         logs = []
+                        video_path_pattern = re.compile(r"File ready at\s+'([^']+)'")
+                        progress_pattern = re.compile(r"\[\s*(\d{1,3})%\]")
+
+                        found_video = None
+
                         for line in process.stdout:
-                            line = line.rstrip()
+                            line = line.strip()
                             logs.append(line)
                             log_box.text("\n".join(logs[-20:]))
 
-                            # Proper progress bar parsing: only match lines like "[ 45%]"
-                            if "[" in line and "%" in line:
-                                try:
-                                    percent_str = line.split("[")[-1].split("%")[0].strip()
-                                    percent = int(percent_str)
-                                    progress.progress(min(percent, 100) / 100)
-                                except ValueError:
-                                    pass  # ignore weird lines (like with ² etc.)
+                            match = progress_pattern.search(line)
+                            if match:
+                                percent = int(match.group(1))
+                                progress.progress(min(percent, 100) / 100)
+
+                            vmatch = video_path_pattern.search(line)
+                            if vmatch:
+                                found_video = vmatch.group(1).strip()
 
                         process.wait()
 
-                        if process.returncode == 0 and os.path.exists(output_path):
-                            progress.progress(1.0, text="✅ Done!")
-                            st.video(output_path)
-                            st.success(f"Saved at {output_path}")
+                        progress.progress(1.0)
+
+                        final_path = found_video or output_path
+                        if process.returncode == 0 and os.path.exists(final_path):
+                            st.success("✅ Render complete!")
+                            st.video(final_path)
+                            st.info(f"Saved at {final_path}")
                         else:
-                            progress.progress(1.0, text="⚠️ Render failed.")
-                            st.error("Render failed or file missing. Check your Scene name.")
+                            st.error("⚠️ Render failed or output missing. Check your Scene name or script.")
 
                     except Exception as e:
-                        progress.progress(1.0, text="❌ Error.")
+                        progress.progress(1.0)
                         st.error(f"Error: {e}")
                         
