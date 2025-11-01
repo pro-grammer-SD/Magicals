@@ -1,10 +1,12 @@
 import streamlit as st
 import os
-import tempfile
 import subprocess
 import re
 
 st.title("🎬 Manim Renderer or Video Uploader")
+
+MEDIA_DIR = "media"
+os.makedirs(MEDIA_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 option = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
@@ -15,7 +17,11 @@ if option == "Upload Video":
         if uploaded_video.size > MAX_FILE_SIZE:
             st.error("File too large! Must be under 10 MB.")
         else:
-            st.video(uploaded_video)
+            save_path = os.path.join(MEDIA_DIR, uploaded_video.name)
+            with open(save_path, "wb") as f:
+                f.write(uploaded_video.read())
+            st.success(f"✅ Uploaded successfully: {uploaded_video.name}")
+            st.video(save_path)
 
 else:
     uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
@@ -23,9 +29,9 @@ else:
         if uploaded_script.size > MAX_FILE_SIZE:
             st.error("File too large! Must be under 10 MB.")
         else:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as temp_file:
-                temp_file.write(uploaded_script.read())
-                temp_path = temp_file.name
+            script_path = os.path.join(MEDIA_DIR, uploaded_script.name)
+            with open(script_path, "wb") as f:
+                f.write(uploaded_script.read())
 
             scene_name = st.text_input("Enter Scene Class Name (from your .py file):")
 
@@ -38,60 +44,64 @@ else:
                     video_path = None
 
                     try:
-                        with tempfile.TemporaryDirectory() as tmpdir:
-                            cmd = [
-                                "manim",
-                                temp_path,
-                                scene_name,
-                                "-ql",
-                                "-o",
-                                "output.mp4",
-                                "--media_dir",
-                                tmpdir,
-                                "--progress_bar",
-                                "display"
-                            ]
+                        output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
+                        output_path = os.path.join(MEDIA_DIR, output_name)
 
-                            process = subprocess.Popen(
-                                cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,
-                                text=True,
-                                bufsize=1,
-                            )
+                        cmd = [
+                            "manim",
+                            script_path,
+                            scene_name,
+                            "-ql",
+                            "-o",
+                            output_name,
+                            "--media_dir",
+                            MEDIA_DIR,
+                            "--progress_bar",
+                            "display"
+                        ]
 
-                            for line in process.stdout:
-                                line = line.strip()
-                                print(line, flush=True)
-                                log_box.text(line)
+                        process = subprocess.Popen(
+                            cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1,
+                        )
 
-                                percent_match = re.search(r"\[\s*(\d+)%\]", line)
-                                if percent_match:
-                                    percent = int(percent_match.group(1))
-                                    progress_bar.progress(
-                                        percent / 100 if percent < 100 else 1.0,
-                                        text=f"Rendering... {percent}%" if percent < 100 else "✅ Render complete!"
-                                    )
+                        for line in process.stdout:
+                            line = line.strip()
+                            print(line, flush=True)
+                            log_box.text(line)
 
-                                path_match = re.search(r"File ready at\s+'([^']+)'", line)
-                                if path_match:
-                                    video_path = path_match.group(1).strip()
-                                    print(f"[DEBUG] Output path found: {video_path}", flush=True)
+                            percent_match = re.search(r"\[\s*(\d+)%\]", line)
+                            if percent_match:
+                                percent = int(percent_match.group(1))
+                                progress_bar.progress(
+                                    percent / 100 if percent < 100 else 1.0,
+                                    text=f"Rendering... {percent}%" if percent < 100 else "✅ Render complete!"
+                                )
 
-                            process.wait()
+                            path_match = re.search(r"File ready at\s+'([^']+)'", line)
+                            if path_match:
+                                video_path = path_match.group(1).strip()
+                                print(f"[DEBUG] Output path found: {video_path}", flush=True)
 
-                            print(f"[DEBUG] Process return code: {process.returncode}", flush=True)
-                            print(f"[DEBUG] Final video_path: {video_path}", flush=True)
+                        process.wait()
 
-                            if process.returncode == 0 and video_path and os.path.exists(video_path):
-                                progress_bar.progress(1.0, text="✅ Success!")
-                                st.video(video_path)
-                            elif process.returncode == 0:
-                                progress_bar.progress(1.0, text="⚠️ No video found.")
-                                st.error("Rendered file missing.")
-                            else:
-                                progress_bar.progress(1.0, text="❌ Render failed.")
-                                st.error("Manim failed to render. Check your scene name/code.")
+                        print(f"[DEBUG] Process return code: {process.returncode}", flush=True)
+                        print(f"[DEBUG] Final video_path: {video_path}", flush=True)
+
+                        if process.returncode == 0 and video_path and os.path.exists(video_path):
+                            progress_bar.progress(1.0, text="✅ Success!")
+                            st.video(video_path)
+                            st.success(f"Saved at {video_path}")
+                        elif os.path.exists(output_path):
+                            progress_bar.progress(1.0, text="✅ Success!")
+                            st.video(output_path)
+                            st.success(f"Saved at {output_path}")
+                        else:
+                            progress_bar.progress(1.0, text="⚠️ No video found.")
+                            st.error("Rendered file missing.")
 
                     except Exception as e:
                         progress_bar.progress(1.0, text="❌ Error.")
