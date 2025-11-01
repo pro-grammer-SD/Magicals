@@ -76,10 +76,14 @@ else:
                             logs.append(line)
                             log_box.text("\n".join(logs[-20:]))
 
-                            digits = "".join([c for c in line if c.isdigit()])
-                            if digits.isdigit():
-                                percent = int(digits)
-                                progress.progress(min(percent, 100) / 100)
+                            # Proper progress bar parsing: only match lines like "[ 45%]"
+                            if "[" in line and "%" in line:
+                                try:
+                                    percent_str = line.split("[")[-1].split("%")[0].strip()
+                                    percent = int(percent_str)
+                                    progress.progress(min(percent, 100) / 100)
+                                except ValueError:
+                                    pass  # ignore weird lines (like with ² etc.)
 
                         process.wait()
 
