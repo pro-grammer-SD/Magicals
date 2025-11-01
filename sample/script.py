@@ -1,38 +1,100 @@
-from manim import *
-import math
+import streamlit as st
+import os
+import tempfile
+import subprocess
+import re
 
-class PythagorasNoLatex(Scene):
-    def construct(self):
-        # Right triangle
-        triangle = Polygon(ORIGIN, 3*RIGHT, 3*UP, color=BLUE)
-        a_label = Text("a").next_to(triangle, LEFT, buff=0.3)
-        b_label = Text("b").next_to(triangle, DOWN, buff=0.3)
-        c_label = Text("c").next_to(triangle, RIGHT+UP, buff=0.2)
+st.title("🎬 Manim Renderer or Video Uploader")
 
-        # Squares on each side
-        square_a = Square(3, color=YELLOW).next_to(triangle, LEFT, buff=0)
-        square_b = Square(3, color=GREEN).next_to(triangle, DOWN, buff=0)
-        square_c = Square(math.sqrt(18), color=RED).move_to(triangle.get_center() + 1.5*UR)
+MAX_FILE_SIZE = 10 * 1024 * 1024
+option = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
 
-        # Square labels (no LaTeX)
-        label_a2 = Text("a²").scale(0.8).move_to(square_a.get_center())
-        label_b2 = Text("b²").scale(0.8).move_to(square_b.get_center())
-        label_c2 = Text("c²").scale(0.8).move_to(square_c.get_center())
+if option == "Upload Video":
+    uploaded_video = st.file_uploader("Upload MP4 (max 10 MB)", type=["mp4"])
+    if uploaded_video:
+        if uploaded_video.size > MAX_FILE_SIZE:
+            st.error("File too large! Must be under 10 MB.")
+        else:
+            st.video(uploaded_video)
 
-        # Animation
-        self.play(Create(triangle))
-        self.play(FadeIn(a_label), FadeIn(b_label), FadeIn(c_label))
-        self.wait(0.5)
+else:
+    uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
+    if uploaded_script:
+        if uploaded_script.size > MAX_FILE_SIZE:
+            st.error("File too large! Must be under 10 MB.")
+        else:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as temp_file:
+                temp_file.write(uploaded_script.read())
+                temp_path = temp_file.name
 
-        self.play(Create(square_a), Create(square_b))
-        self.play(FadeIn(label_a2), FadeIn(label_b2))
-        self.wait(1)
+            scene_name = st.text_input("Enter Scene Class Name (from your .py file):")
 
-        equation = Text("a² + b² = c²").scale(0.9).to_edge(DOWN)
-        self.play(Write(equation))
-        self.wait(1)
+            if st.button("Render"):
+                if not scene_name.strip():
+                    st.error("Please enter a valid scene name.")
+                else:
+                    progress_bar = st.progress(0, text="Initializing render...")
+                    log_box = st.empty()
+                    video_path = None
 
-        self.play(Create(square_c), FadeIn(label_c2))
-        self.play(Indicate(label_c2, color=RED))
-        self.wait(2)
-        
+                    try:
+                        with tempfile.TemporaryDirectory() as tmpdir:
+                            cmd = [
+                                "manim",
+                                temp_path,
+                                scene_name,
+                                "-ql",
+                                "-o",
+                                "output.mp4",
+                                "--media_dir",
+                                tmpdir,
+                                "--progress_bar",
+                                "display"
+                            ]
+
+                            process = subprocess.Popen(
+                                cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                                bufsize=1,
+                            )
+
+                            for line in process.stdout:
+                                line = line.strip()
+                                print(line, flush=True)
+                                log_box.text(line)
+
+                                percent_match = re.search(r"\[\s*(\d+)%\]", line)
+                                if percent_match:
+                                    percent = int(percent_match.group(1))
+                                    progress_bar.progress(
+                                        percent / 100 if percent < 100 else 1.0,
+                                        text=f"Rendering... {percent}%" if percent < 100 else "✅ Render complete!"
+                                    )
+
+                                path_match = re.search(r"File ready at\s+'([^']+)'", line)
+                                if path_match:
+                                    video_path = path_match.group(1).strip()
+                                    print(f"[DEBUG] Output path found: {video_path}", flush=True)
+
+                            process.wait()
+
+                            print(f"[DEBUG] Process return code: {process.returncode}", flush=True)
+                            print(f"[DEBUG] Final video_path: {video_path}", flush=True)
+
+                            if process.returncode == 0 and video_path and os.path.exists(video_path):
+                                progress_bar.progress(1.0, text="✅ Success!")
+                                st.video(video_path)
+                            elif process.returncode == 0:
+                                progress_bar.progress(1.0, text="⚠️ No video found.")
+                                st.error("Rendered file missing.")
+                            else:
+                                progress_bar.progress(1.0, text="❌ Render failed.")
+                                st.error("Manim failed to render. Check your scene name/code.")
+
+                    except Exception as e:
+                        progress_bar.progress(1.0, text="❌ Error.")
+                        st.error(f"Error: {e}")
+                        print(f"[ERROR] Exception occurred: {e}", flush=True)
+                        
