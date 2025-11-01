@@ -1,16 +1,18 @@
 import streamlit as st
-from utils.supabase_client import supabase
+import os
 
-st.title("🪄 Discover Magicals")
+st.set_page_config(page_title="🌟 Discover Magicals", page_icon="🪄")
+st.header("🌟 Community Magicals")
 
-res = supabase.table("magicals").select("*").order("created_at", desc=True).execute()
-magicals = res.data or []
+PUBLIC_DIR = "published_magicals"
+os.makedirs(PUBLIC_DIR, exist_ok=True)
 
-if not magicals:
-    st.info("No magicals yet. Be the first to upload!")
+videos = [v for v in os.listdir(PUBLIC_DIR) if v.endswith(".mp4")]
+
+if videos:
+    for v in videos:
+        st.subheader(v)
+        st.video(os.path.join(PUBLIC_DIR, v))
 else:
-    for m in magicals:
-        st.subheader(m["title"])
-        st.write(m.get("description", ""))
-        st.video(m.get("video_url"))
-        st.markdown(f"⭐ Likes: {m.get('likes_count', 0)} | 💬 Comments: {m.get('comments_count', 0)} | 👁️ Views: {m.get('views', 0)}")
+    st.info("No Magicals yet. Go publish one from the Upload page!")
+    

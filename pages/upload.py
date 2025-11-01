@@ -3,12 +3,15 @@ import os
 import subprocess
 import sys
 import re
+import shutil
 
 st.set_page_config(page_title="🎬 Upload & Render", page_icon="🎥")
-st.header("🎬 Upload")
+st.header("🎬 Upload or Render Your Magical")
 
 MEDIA_DIR = "media"
+PUBLIC_DIR = "published_magicals"
 os.makedirs(MEDIA_DIR, exist_ok=True)
+os.makedirs(PUBLIC_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -25,6 +28,11 @@ if mode == "Upload Video":
                 f.write(uploaded_video.read())
             st.success(f"✅ Uploaded successfully: {uploaded_video.name}")
             st.video(save_path)
+
+            if st.button("✨ Publish this Magical"):
+                public_path = os.path.join(PUBLIC_DIR, uploaded_video.name)
+                shutil.copy(save_path, public_path)
+                st.success("🌟 Published! It will appear in Discover.")
 
 else:
     uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
@@ -44,11 +52,10 @@ else:
                 else:
                     progress = st.progress(0, text="Starting render…")
                     log_box = st.empty()
+
                     base_name = os.path.splitext(uploaded_script.name)[0]
                     output_name = f"{base_name}_{scene_name}.mp4"
-
-                    # Build exact expected Manim output path
-                    final_path = f"/mount/src/magicals/media/videos/script/1440p60/{output_name}"
+                    final_path = f"media/videos/script/1440p60/{output_name}"
                     os.makedirs(os.path.dirname(final_path), exist_ok=True)
 
                     cmd = [
@@ -57,7 +64,7 @@ else:
                         scene_name,
                         "-qp",
                         "-o", output_name,
-                        "--media_dir", "/mount/src/magicals/media",
+                        "--media_dir", "media",
                         "--progress_bar", "display"
                     ]
 
@@ -91,8 +98,13 @@ else:
                             st.success("✅ Render complete!")
                             st.video(final_path)
                             st.info(f"Saved at {final_path}")
+
+                            if st.button("✨ Publish this Magical"):
+                                public_path = os.path.join(PUBLIC_DIR, os.path.basename(final_path))
+                                shutil.copy(final_path, public_path)
+                                st.success("🌟 Published! It will appear in Discover.")
                         else:
-                            st.error("⚠️ Render failed or output missing. Check your Scene name or script.")
+                            st.error("⚠️ Render failed or file missing. Check your Scene name or script.")
 
                     except Exception as e:
                         progress.progress(1.0)
