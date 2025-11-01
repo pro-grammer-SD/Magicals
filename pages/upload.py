@@ -2,11 +2,10 @@ import streamlit as st
 import os
 import tempfile
 import subprocess
-import re
 
 st.title("🎬 Manim Renderer or Video Uploader")
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 option = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
 
 if option == "Upload Video":
@@ -33,68 +32,25 @@ else:
                 if not scene_name.strip():
                     st.error("Please enter a valid scene name.")
                 else:
-                    progress_bar = st.progress(0, text="Initializing render...")
-                    log_box = st.empty()
-                    video_path = None
-
                     try:
                         with tempfile.TemporaryDirectory() as tmpdir:
                             cmd = [
                                 "manim",
                                 temp_path,
                                 scene_name,
-                                "-ql",
+                                "-qp",
                                 "-o",
                                 "output.mp4",
                                 "--media_dir",
                                 tmpdir,
-                                "--progress_bar",
-                                "display"
                             ]
-
-                            process = subprocess.Popen(
-                                cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,
-                                text=True,
-                                bufsize=1,
-                            )
-
-                            for line in process.stdout:
-                                line = line.strip()
-                                print(line, flush=True)
-                                log_box.text(line)
-
-                                percent_match = re.search(r"\[\s*(\d+)%\]", line)
-                                if percent_match:
-                                    percent = int(percent_match.group(1))
-                                    progress_bar.progress(
-                                        percent / 100 if percent < 100 else 1.0,
-                                        text=f"Rendering... {percent}%" if percent < 100 else "✅ Render complete!"
-                                    )
-
-                                path_match = re.search(r"File ready at\s+'([^']+)'", line)
-                                if path_match:
-                                    video_path = path_match.group(1).strip()
-                                    print(f"[DEBUG] Output path found: {video_path}", flush=True)
-
-                            process.wait()
-
-                            print(f"[DEBUG] Process return code: {process.returncode}", flush=True)
-                            print(f"[DEBUG] Final video_path: {video_path}", flush=True)
-
-                            if process.returncode == 0 and video_path and os.path.exists(video_path):
-                                progress_bar.progress(1.0, text="✅ Success!")
-                                st.video(video_path)
-                            elif process.returncode == 0:
-                                progress_bar.progress(1.0, text="⚠️ No video found.")
-                                st.error("Rendered file missing.")
+                            subprocess.run(cmd, check=True)
+                            output_path = os.path.join(tmpdir, "videos", scene_name, "1440p60", "output.mp4")
+                            if os.path.exists(output_path):
+                                st.success("Render complete!")
+                                st.video(output_path)
                             else:
-                                progress_bar.progress(1.0, text="❌ Render failed.")
-                                st.error("Manim failed to render. Check your scene name/code.")
-
-                    except Exception as e:
-                        progress_bar.progress(1.0, text="❌ Error.")
-                        st.error(f"Error: {e}")
-                        print(f"[ERROR] Exception occurred: {e}", flush=True)
+                                st.error("No video found after render.")
+                    except subprocess.CalledProcessError as e:
+                        st.error(f"Render failed: {e}")
                         
