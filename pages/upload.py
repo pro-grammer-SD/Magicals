@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import subprocess
+import sys
 
 st.set_page_config(page_title="🎬 Upload & Render", page_icon="🎥")
 st.header("🎬 Manim Renderer or Video Uploader")
@@ -8,7 +9,7 @@ st.header("🎬 Manim Renderer or Video Uploader")
 MEDIA_DIR = "media"
 os.makedirs(MEDIA_DIR, exist_ok=True)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 mode = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
 
@@ -18,11 +19,11 @@ if mode == "Upload Video":
         if uploaded_video.size > MAX_FILE_SIZE:
             st.error("File too large! Must be under 10 MB.")
         else:
-            path = os.path.join(MEDIA_DIR, uploaded_video.name)
-            with open(path, "wb") as f:
+            save_path = os.path.join(MEDIA_DIR, uploaded_video.name)
+            with open(save_path, "wb") as f:
                 f.write(uploaded_video.read())
             st.success(f"✅ Uploaded successfully: {uploaded_video.name}")
-            st.video(path)
+            st.video(save_path)
 
 else:
     uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
@@ -42,12 +43,12 @@ else:
                 else:
                     progress = st.progress(0, text="Starting render…")
                     log_box = st.empty()
-
                     output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
                     output_path = os.path.join(MEDIA_DIR, output_name)
 
-                    cmd = [
-                        "manim",
+                    manim_exec = [sys.executable, "-m", "manim"]
+
+                    cmd = manim_exec + [
                         script_path,
                         scene_name,
                         "-ql",
@@ -66,6 +67,7 @@ else:
                             stderr=subprocess.STDOUT,
                             text=True,
                             bufsize=1,
+                            env={**os.environ, "STREAMLIT_RUNTIME_DISABLED": "1"},
                         )
 
                         logs = []
