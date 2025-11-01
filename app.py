@@ -12,7 +12,7 @@ if st.session_state.user:
     st.sidebar.success(f"Logged in as {st.session_state.user['email']}")
     if st.sidebar.button("Logout"):
         st.session_state.user = None
-        st.experimental_rerun()
+        st.rerun()
     st.sidebar.page_link("pages/discover.py", label="Discover 🪄")
     st.sidebar.page_link("pages/upload.py", label="Upload ⬆️")
     st.sidebar.page_link("pages/analytics.py", label="Analytics 📊")
