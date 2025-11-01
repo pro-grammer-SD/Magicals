@@ -44,16 +44,20 @@ else:
                 else:
                     progress = st.progress(0, text="Starting render…")
                     log_box = st.empty()
-                    output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
-                    output_path = os.path.join(MEDIA_DIR, output_name)
+                    base_name = os.path.splitext(uploaded_script.name)[0]
+                    output_name = f"{base_name}_{scene_name}.mp4"
+
+                    # Build exact expected Manim output path
+                    final_path = f"/mount/src/magicals/media/videos/script/1440p60/{output_name}"
+                    os.makedirs(os.path.dirname(final_path), exist_ok=True)
 
                     cmd = [
                         sys.executable, "-m", "manim",
                         script_path,
                         scene_name,
-                        "-ql",
+                        "-qp",
                         "-o", output_name,
-                        "--media_dir", MEDIA_DIR,
+                        "--media_dir", "/mount/src/magicals/media",
                         "--progress_bar", "display"
                     ]
 
@@ -68,10 +72,7 @@ else:
                         )
 
                         logs = []
-                        video_path_pattern = re.compile(r"File ready at\s+'([^']+)'")
                         progress_pattern = re.compile(r"\[\s*(\d{1,3})%\]")
-
-                        found_video = None
 
                         for line in process.stdout:
                             line = line.strip()
@@ -83,15 +84,9 @@ else:
                                 percent = int(match.group(1))
                                 progress.progress(min(percent, 100) / 100)
 
-                            vmatch = video_path_pattern.search(line)
-                            if vmatch:
-                                found_video = vmatch.group(1).strip()
-
                         process.wait()
-
                         progress.progress(1.0)
 
-                        final_path = found_video or output_path
                         if process.returncode == 0 and os.path.exists(final_path):
                             st.success("✅ Render complete!")
                             st.video(final_path)
