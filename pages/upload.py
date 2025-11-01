@@ -2,11 +2,14 @@ import streamlit as st
 import os
 import subprocess
 import sys
+import json
 import re
 import shutil
+from datetime import datetime
+from utils.supabase_client import get_current_user
 
 st.set_page_config(page_title="🎬 Upload & Render", page_icon="🎥")
-st.header("🎬 Upload or Render Your Magical")
+st.header("🎬 Upload or Create Your Magical")
 
 MEDIA_DIR = "media"
 PUBLIC_DIR = "published_magicals"
@@ -15,7 +18,9 @@ os.makedirs(PUBLIC_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
-mode = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
+user = get_current_user() or {"username": "Guest"}
+
+mode = st.radio("Choose mode:", ["Upload Video", "Render Manim Script"])
 
 if mode == "Upload Video":
     uploaded_video = st.file_uploader("Upload MP4 (max 10 MB)", type=["mp4"])
@@ -26,13 +31,30 @@ if mode == "Upload Video":
             save_path = os.path.join(MEDIA_DIR, uploaded_video.name)
             with open(save_path, "wb") as f:
                 f.write(uploaded_video.read())
-            st.success(f"✅ Uploaded successfully: {uploaded_video.name}")
             st.video(save_path)
 
-            if st.button("✨ Publish this Magical"):
-                public_path = os.path.join(PUBLIC_DIR, uploaded_video.name)
-                shutil.copy(save_path, public_path)
-                st.success("🌟 Published! It will appear in Discover.")
+            st.subheader("✨ Add Magical Details")
+            title = st.text_input("Title")
+            description = st.text_area("Description")
+            if st.button("🌟 Publish"):
+                if not title.strip():
+                    st.error("Title required.")
+                else:
+                    publish_path = os.path.join(PUBLIC_DIR, uploaded_video.name)
+                    shutil.copy(save_path, publish_path)
+
+                    meta = {
+                        "title": title.strip(),
+                        "description": description.strip(),
+                        "username": user["username"],
+                        "filename": uploaded_video.name,
+                        "timestamp": datetime.now().isoformat(),
+                        "likes": 0
+                    }
+                    with open(publish_path.replace(".mp4", ".json"), "w") as f:
+                        json.dump(meta, f, indent=4)
+
+                    st.success("✅ Published successfully! Check Discover page.")
 
 else:
     uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
@@ -45,16 +67,17 @@ else:
                 f.write(uploaded_script.read())
 
             scene_name = st.text_input("Enter Scene Class Name (from your .py file):")
+            title = st.text_input("Title for your Magical")
+            description = st.text_area("Description")
 
-            if st.button("Render"):
-                if not scene_name.strip():
-                    st.error("Please enter a valid scene name.")
+            if st.button("Render & Publish"):
+                if not scene_name.strip() or not title.strip():
+                    st.error("Please fill all fields.")
                 else:
-                    progress = st.progress(0, text="Starting render…")
+                    progress = st.progress(0, text="Rendering with Manim…")
                     log_box = st.empty()
 
-                    base_name = os.path.splitext(uploaded_script.name)[0]
-                    output_name = f"{base_name}_{scene_name}.mp4"
+                    output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
                     final_path = f"media/videos/script/1440p60/{output_name}"
                     os.makedirs(os.path.dirname(final_path), exist_ok=True)
 
@@ -85,7 +108,6 @@ else:
                             line = line.strip()
                             logs.append(line)
                             log_box.text("\n".join(logs[-20:]))
-
                             match = progress_pattern.search(line)
                             if match:
                                 percent = int(match.group(1))
@@ -95,16 +117,24 @@ else:
                         progress.progress(1.0)
 
                         if process.returncode == 0 and os.path.exists(final_path):
-                            st.success("✅ Render complete!")
                             st.video(final_path)
-                            st.info(f"Saved at {final_path}")
+                            publish_path = os.path.join(PUBLIC_DIR, os.path.basename(final_path))
+                            shutil.copy(final_path, publish_path)
 
-                            if st.button("✨ Publish this Magical"):
-                                public_path = os.path.join(PUBLIC_DIR, os.path.basename(final_path))
-                                shutil.copy(final_path, public_path)
-                                st.success("🌟 Published! It will appear in Discover.")
+                            meta = {
+                                "title": title.strip(),
+                                "description": description.strip(),
+                                "username": user["username"],
+                                "filename": os.path.basename(final_path),
+                                "timestamp": datetime.now().isoformat(),
+                                "likes": 0
+                            }
+                            with open(publish_path.replace(".mp4", ".json"), "w") as f:
+                                json.dump(meta, f, indent=4)
+
+                            st.success("✅ Rendered & Published! Check Discover page.")
                         else:
-                            st.error("⚠️ Render failed or file missing. Check your Scene name or script.")
+                            st.error("⚠️ Render failed. Check your Scene name.")
 
                     except Exception as e:
                         progress.progress(1.0)
