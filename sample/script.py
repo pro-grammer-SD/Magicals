@@ -1,89 +1,38 @@
-import streamlit as st
-import os
-import subprocess
+from manim import *
+import math
 
-st.title("🎬 Manim Renderer or Video Uploader")
+class PythagorasNoLatex(Scene):
+    def construct(self):
+        # Right triangle
+        triangle = Polygon(ORIGIN, 3*RIGHT, 3*UP, color=BLUE)
+        a_label = Text("a").next_to(triangle, LEFT, buff=0.3)
+        b_label = Text("b").next_to(triangle, DOWN, buff=0.3)
+        c_label = Text("c").next_to(triangle, RIGHT+UP, buff=0.2)
 
-MEDIA_DIR = "media"
-os.makedirs(MEDIA_DIR, exist_ok=True)
+        # Squares on each side
+        square_a = Square(3, color=YELLOW).next_to(triangle, LEFT, buff=0)
+        square_b = Square(3, color=GREEN).next_to(triangle, DOWN, buff=0)
+        square_c = Square(math.sqrt(18), color=RED).move_to(triangle.get_center() + 1.5*UR)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
-option = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
+        # Square labels (no LaTeX)
+        label_a2 = Text("a²").scale(0.8).move_to(square_a.get_center())
+        label_b2 = Text("b²").scale(0.8).move_to(square_b.get_center())
+        label_c2 = Text("c²").scale(0.8).move_to(square_c.get_center())
 
-if option == "Upload Video":
-    uploaded_video = st.file_uploader("Upload MP4 (max 10 MB)", type=["mp4"])
-    if uploaded_video:
-        if uploaded_video.size > MAX_FILE_SIZE:
-            st.error("File too large! Must be under 10 MB.")
-        else:
-            save_path = os.path.join(MEDIA_DIR, uploaded_video.name)
-            with open(save_path, "wb") as f:
-                f.write(uploaded_video.read())
-            st.success(f"✅ Uploaded successfully: {uploaded_video.name}")
-            st.video(save_path)
+        # Animation
+        self.play(Create(triangle))
+        self.play(FadeIn(a_label), FadeIn(b_label), FadeIn(c_label))
+        self.wait(0.5)
 
-else:
-    uploaded_script = st.file_uploader("Upload Manim .py file (max 10 MB)", type=["py"])
-    if uploaded_script:
-        if uploaded_script.size > MAX_FILE_SIZE:
-            st.error("File too large! Must be under 10 MB.")
-        else:
-            script_path = os.path.join(MEDIA_DIR, uploaded_script.name)
-            with open(script_path, "wb") as f:
-                f.write(uploaded_script.read())
+        self.play(Create(square_a), Create(square_b))
+        self.play(FadeIn(label_a2), FadeIn(label_b2))
+        self.wait(1)
 
-            scene_name = st.text_input("Enter Scene Class Name (from your .py file):")
+        equation = Text("a² + b² = c²").scale(0.9).to_edge(DOWN)
+        self.play(Write(equation))
+        self.wait(1)
 
-            if st.button("Render"):
-                if not scene_name.strip():
-                    st.error("Please enter a valid scene name.")
-                else:
-                    st.info("⚙️ Rendering in progress... Output will appear below.")
-                    log_output = st.empty()
-
-                    try:
-                        output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
-                        output_path = os.path.join(MEDIA_DIR, output_name)
-
-                        cmd = [
-                            "manim",
-                            script_path,
-                            scene_name,
-                            "-ql",
-                            "-o",
-                            output_name,
-                            "--media_dir",
-                            MEDIA_DIR,
-                            "--progress_bar",
-                            "display"
-                        ]
-
-                        process = subprocess.Popen(
-                            cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1,
-                        )
-
-                        full_log = ""
-                        for line in process.stdout:
-                            full_log += line
-                            log_output.text(full_log)
-                            print(line, end="", flush=True)
-
-                        process.wait()
-
-                        if process.returncode == 0:
-                            if os.path.exists(output_path):
-                                st.success("✅ Render complete!")
-                                st.video(output_path)
-                            else:
-                                st.warning("⚠️ Render finished but output video not found.")
-                        else:
-                            st.error("❌ Render failed. Check console/logs above.")
-
-                    except Exception as e:
-                        st.error(f"💥 Error: {e}")
-                        print(f"[ERROR] {e}", flush=True)
-                        
+        self.play(Create(square_c), FadeIn(label_c2))
+        self.play(Indicate(label_c2, color=RED))
+        self.wait(2)
+        
