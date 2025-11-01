@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import subprocess
-import re
 
 st.title("🎬 Manim Renderer or Video Uploader")
 
@@ -39,9 +38,8 @@ else:
                 if not scene_name.strip():
                     st.error("Please enter a valid scene name.")
                 else:
-                    progress_bar = st.progress(0, text="Initializing render...")
-                    log_box = st.empty()
-                    video_path = None
+                    st.info("⚙️ Rendering in progress... Output will appear below.")
+                    log_output = st.empty()
 
                     try:
                         output_name = f"{os.path.splitext(uploaded_script.name)[0]}_{scene_name}.mp4"
@@ -68,43 +66,24 @@ else:
                             bufsize=1,
                         )
 
+                        full_log = ""
                         for line in process.stdout:
-                            line = line.strip()
-                            print(line, flush=True)
-                            log_box.text(line)
-
-                            percent_match = re.search(r"\[\s*(\d+)%\]", line)
-                            if percent_match:
-                                percent = int(percent_match.group(1))
-                                progress_bar.progress(
-                                    percent / 100 if percent < 100 else 1.0,
-                                    text=f"Rendering... {percent}%" if percent < 100 else "✅ Render complete!"
-                                )
-
-                            path_match = re.search(r"File ready at\s+'([^']+)'", line)
-                            if path_match:
-                                video_path = path_match.group(1).strip()
-                                print(f"[DEBUG] Output path found: {video_path}", flush=True)
+                            full_log += line
+                            log_output.text(full_log)
+                            print(line, end="", flush=True)
 
                         process.wait()
 
-                        print(f"[DEBUG] Process return code: {process.returncode}", flush=True)
-                        print(f"[DEBUG] Final video_path: {video_path}", flush=True)
-
-                        if process.returncode == 0 and video_path and os.path.exists(video_path):
-                            progress_bar.progress(1.0, text="✅ Success!")
-                            st.video(video_path)
-                            st.success(f"Saved at {video_path}")
-                        elif os.path.exists(output_path):
-                            progress_bar.progress(1.0, text="✅ Success!")
-                            st.video(output_path)
-                            st.success(f"Saved at {output_path}")
+                        if process.returncode == 0:
+                            if os.path.exists(output_path):
+                                st.success("✅ Render complete!")
+                                st.video(output_path)
+                            else:
+                                st.warning("⚠️ Render finished but output video not found.")
                         else:
-                            progress_bar.progress(1.0, text="⚠️ No video found.")
-                            st.error("Rendered file missing.")
+                            st.error("❌ Render failed. Check console/logs above.")
 
                     except Exception as e:
-                        progress_bar.progress(1.0, text="❌ Error.")
-                        st.error(f"Error: {e}")
-                        print(f"[ERROR] Exception occurred: {e}", flush=True)
+                        st.error(f"💥 Error: {e}")
+                        print(f"[ERROR] {e}", flush=True)
                         
