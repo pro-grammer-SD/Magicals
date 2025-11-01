@@ -35,6 +35,7 @@ else:
                 else:
                     progress_bar = st.progress(0, text="Initializing render...")
                     log_box = st.empty()
+                    video_path = None
 
                     try:
                         with tempfile.TemporaryDirectory() as tmpdir:
@@ -62,25 +63,29 @@ else:
                             for line in process.stdout:
                                 log_box.text(line.strip())
 
-                                match = re.search(r"\[\s*(\d+)%\]", line)
-                                if match:
-                                    percent = int(match.group(1))
+                                # Progress percentage live
+                                percent_match = re.search(r"\[\s*(\d+)%\]", line)
+                                if percent_match:
+                                    percent = int(percent_match.group(1))
                                     color_text = f"Rendering... {percent}%"
                                     if percent < 100:
                                         progress_bar.progress(percent / 100, text=color_text)
                                     else:
                                         progress_bar.progress(1.0, text="✅ Render complete!")
 
+                                # Output path live capture
+                                path_match = re.search(r"File ready at\s+'([^']+)'", line)
+                                if path_match:
+                                    video_path = path_match.group(1).strip()
+
                             process.wait()
 
-                            if process.returncode == 0:
-                                output_path = os.path.join(tmpdir, "videos", scene_name, "480p15", "output.mp4")
-                                if os.path.exists(output_path):
-                                    progress_bar.progress(1.0, text="✅ Success!")
-                                    st.video(output_path)
-                                else:
-                                    progress_bar.progress(1.0, text="⚠️ No video found.")
-                                    st.error("Rendered file missing.")
+                            if process.returncode == 0 and video_path and os.path.exists(video_path):
+                                progress_bar.progress(1.0, text="✅ Success!")
+                                st.video(video_path)
+                            elif process.returncode == 0:
+                                progress_bar.progress(1.0, text="⚠️ No video found.")
+                                st.error("Rendered file missing.")
                             else:
                                 progress_bar.progress(1.0, text="❌ Render failed.")
                                 st.error("Manim failed to render. Check your scene name/code.")
