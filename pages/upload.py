@@ -32,6 +32,9 @@ else:
                 if not scene_name.strip():
                     st.error("Please enter a valid scene name.")
                 else:
+                    progress_bar = st.progress(0, text="Starting render...")
+                    progress_placeholder = st.empty()
+
                     try:
                         with tempfile.TemporaryDirectory() as tmpdir:
                             cmd = [
@@ -44,13 +47,39 @@ else:
                                 "--media_dir",
                                 tmpdir,
                             ]
-                            subprocess.run(cmd, check=True)
-                            output_path = os.path.join(tmpdir, "videos", scene_name, "1440p60", "output.mp4")
-                            if os.path.exists(output_path):
-                                st.success("Render complete!")
-                                st.video(output_path)
+
+                            process = subprocess.Popen(
+                                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+                            )
+
+                            total_steps = 10
+                            step = 0
+                            for line in process.stdout:
+                                line = line.strip()
+                                if "Animation" in line or "File ready at" in line:
+                                    step = min(step + 1, total_steps)
+                                    progress = int((step / total_steps) * 100)
+                                    progress_bar.progress(progress / 100, text=f"Rendering... {progress}%")
+
+                                progress_placeholder.text(line)
+
+                            process.wait()
+
+                            if process.returncode == 0:
+                                progress_bar.progress(1.0, text="✅ Render complete!")
+                                progress_bar.empty()
+                                progress_placeholder.empty()
+                                output_path = os.path.join(tmpdir, "videos", scene_name, "1440p60", "output.mp4")
+                                if os.path.exists(output_path):
+                                    st.success("Render complete!")
+                                    st.video(output_path)
+                                else:
+                                    st.error("No video found after render.")
                             else:
-                                st.error("No video found after render.")
-                    except subprocess.CalledProcessError as e:
-                        st.error(f"Render failed: {e}")
+                                progress_bar.progress(1.0, text="❌ Render failed.")
+                                st.error("Manim render failed!")
+
+                    except Exception as e:
+                        progress_bar.progress(1.0, text="❌ Error during render.")
+                        st.error(f"Render error: {e}")
                         
