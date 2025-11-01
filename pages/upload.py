@@ -2,10 +2,11 @@ import streamlit as st
 import os
 import tempfile
 import subprocess
+import re
 
 st.title("🎬 Manim Renderer or Video Uploader")
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
 option = st.radio("Choose mode:", ["Upload Video", "Upload .py Manim Script"])
 
 if option == "Upload Video":
@@ -32,8 +33,8 @@ else:
                 if not scene_name.strip():
                     st.error("Please enter a valid scene name.")
                 else:
-                    progress_bar = st.progress(0, text="Starting render...")
-                    progress_placeholder = st.empty()
+                    progress_bar = st.progress(0, text="Initializing render...")
+                    log_box = st.empty()
 
                     try:
                         with tempfile.TemporaryDirectory() as tmpdir:
@@ -41,45 +42,50 @@ else:
                                 "manim",
                                 temp_path,
                                 scene_name,
-                                "-qp",
+                                "-ql",
                                 "-o",
                                 "output.mp4",
                                 "--media_dir",
                                 tmpdir,
+                                "--progress_bar",
+                                "display"
                             ]
 
                             process = subprocess.Popen(
-                                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+                                cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                                bufsize=1,
                             )
 
-                            total_steps = 10
-                            step = 0
                             for line in process.stdout:
-                                line = line.strip()
-                                if "Animation" in line or "File ready at" in line:
-                                    step = min(step + 1, total_steps)
-                                    progress = int((step / total_steps) * 100)
-                                    progress_bar.progress(progress / 100, text=f"Rendering... {progress}%")
+                                log_box.text(line.strip())
 
-                                progress_placeholder.text(line)
+                                match = re.search(r"\[\s*(\d+)%\]", line)
+                                if match:
+                                    percent = int(match.group(1))
+                                    color_text = f"Rendering... {percent}%"
+                                    if percent < 100:
+                                        progress_bar.progress(percent / 100, text=color_text)
+                                    else:
+                                        progress_bar.progress(1.0, text="✅ Render complete!")
 
                             process.wait()
 
                             if process.returncode == 0:
-                                progress_bar.progress(1.0, text="✅ Render complete!")
-                                progress_bar.empty()
-                                progress_placeholder.empty()
-                                output_path = os.path.join(tmpdir, "videos", scene_name, "1440p60", "output.mp4")
+                                output_path = os.path.join(tmpdir, "videos", scene_name, "480p15", "output.mp4")
                                 if os.path.exists(output_path):
-                                    st.success("Render complete!")
+                                    progress_bar.progress(1.0, text="✅ Success!")
                                     st.video(output_path)
                                 else:
-                                    st.error("No video found after render.")
+                                    progress_bar.progress(1.0, text="⚠️ No video found.")
+                                    st.error("Rendered file missing.")
                             else:
                                 progress_bar.progress(1.0, text="❌ Render failed.")
-                                st.error("Manim render failed!")
+                                st.error("Manim failed to render. Check your scene name/code.")
 
                     except Exception as e:
-                        progress_bar.progress(1.0, text="❌ Error during render.")
-                        st.error(f"Render error: {e}")
+                        progress_bar.progress(1.0, text="❌ Error.")
+                        st.error(f"Error: {e}")
                         
