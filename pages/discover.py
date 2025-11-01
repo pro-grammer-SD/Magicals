@@ -37,6 +37,6 @@ else:
                 meta["likes"] = likes
                 with open(json_path, "w") as f:
                     json.dump(meta, f, indent=4)
-                st.experimental_rerun()
+                st.rerun()
             st.markdown("---")
             
