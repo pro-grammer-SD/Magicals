@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import json
 from datetime import datetime
+from utils.supabase_client import supabase
 
 st.set_page_config(page_title="🌟 Discover Magicals", page_icon="🪄")
 st.header("🌟 Discover Magicals")
@@ -10,6 +11,7 @@ PUBLIC_DIR = "published_magicals"
 os.makedirs(PUBLIC_DIR, exist_ok=True)
 
 videos = [v for v in os.listdir(PUBLIC_DIR) if v.endswith(".mp4")]
+
 if not videos:
     st.info("No Magicals yet. Go publish one from the Upload page!")
 else:
@@ -22,13 +24,22 @@ else:
 
         title = meta.get("title", "Untitled Magical")
         desc = meta.get("description", "")
-        username = meta.get("username", "Anonymous")
+        user_id = meta.get("user_id")
         likes = meta.get("likes", 0)
         timestamp = meta.get("timestamp", "")
 
+        username = "Anonymous"
+        if user_id:
+            try:
+                res = supabase.table("profiles").select("username").eq("id", user_id).execute()
+                if res.data and len(res.data) > 0:
+                    username = res.data[0].get("username", "Anonymous")
+            except Exception:
+                pass
+
         with st.container():
             st.markdown(f"### 🎥 {title}")
-            st.markdown(f"**By:** @{username} | 🕒 {timestamp.split('T')[0]}")
+            st.markdown(f"**By:** @{username} | 🕒 {timestamp.split('T')[0] if timestamp else 'Unknown'}")
             st.video(os.path.join(PUBLIC_DIR, vid))
             if desc:
                 st.markdown(f"_{desc}_")
