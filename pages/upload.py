@@ -38,14 +38,14 @@ else:
                                 "manim",
                                 temp_path,
                                 scene_name,
-                                "-qm",
+                                "-qp",
                                 "-o",
                                 "output.mp4",
                                 "--media_dir",
                                 tmpdir,
                             ]
                             subprocess.run(cmd, check=True)
-                            output_path = os.path.join(tmpdir, "videos", scene_name, "480p15", "output.mp4")
+                            output_path = os.path.join(tmpdir, "videos", scene_name, "1440p60", "output.mp4")
                             if os.path.exists(output_path):
                                 st.success("Render complete!")
                                 st.video(output_path)
