@@ -3,7 +3,6 @@ from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
 cookies = EncryptedCookieManager(prefix="magicals_", password="secret-key-auth")
-
 if not cookies.ready():
     st.stop()
 
@@ -30,7 +29,6 @@ if "user" in st.session_state:
     st.stop()
 
 mode = st.radio("Select mode", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
-
 email = st.text_input("Email")
 password = st.text_input("Password", type="password")
 
