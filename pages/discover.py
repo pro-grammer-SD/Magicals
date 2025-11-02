@@ -1,69 +1,86 @@
 import streamlit as st
 import os
 import json
-from datetime import datetime
 from utils.supabase_client import supabase
 
-st.set_page_config(page_title="🌟 Discover Magicals", page_icon="🪄")
-st.header("🌟 Discover Magicals")
+st.set_page_config(page_title="discover", layout="wide")
+st.title("discover")
 
-PUBLIC_DIR = "published_magicals"
-os.makedirs(PUBLIC_DIR, exist_ok=True)
+base = "/home"
+entries = []
+for u in os.listdir(base):
+    media_dir = os.path.join(base, u, "media", "1440p60")
+    if not os.path.exists(media_dir):
+        continue
+    for f in os.listdir(media_dir):
+        if f.endswith(".mp4"):
+            p = os.path.join(media_dir, f)
+            j = p.replace(".mp4", ".json")
+            meta = {}
+            if os.path.exists(j):
+                try:
+                    with open(j, "r") as fh:
+                        meta = json.load(fh)
+                except:
+                    meta = {}
+            entries.append({"user_folder": u, "path": p, "meta": meta})
 
-current_user = st.session_state.get("user")
-user_id = current_user.get("id") if current_user else None
-
-videos = [v for v in os.listdir(PUBLIC_DIR) if v.endswith(".mp4")]
-
-if not videos:
-    st.info("No Magicals yet. Go publish one from the Upload page!")
+if not entries:
+    st.info("no magicals yet")
 else:
-    for vid in sorted(videos, reverse=True):
-        json_path = os.path.join(PUBLIC_DIR, vid.replace(".mp4", ".json"))
-        meta = {}
-        if os.path.exists(json_path):
-            with open(json_path, "r") as f:
-                meta = json.load(f)
+    for e in sorted(entries, key=lambda x: x["meta"].get("timestamp", ""), reverse=True):
+        m = e["meta"]
+        title = m.get("title", "untitled")
+        desc = m.get("description", "")
+        uname = m.get("username", e["user_folder"])
+        likes = m.get("likes", 0)
+        uid = m.get("user_id")
 
-        title = meta.get("title", "Untitled Magical")
-        desc = meta.get("description", "")
-        author_id = meta.get("user_id")
-        likes = meta.get("likes", 0)
-        liked_by = meta.get("liked_by", [])
-        timestamp = meta.get("timestamp", "")
-
-        username = "Anonymous"
-        if author_id:
-            try:
-                res = supabase.table("profiles").select("username").eq("id", author_id).execute()
-                if res.data:
-                    username = res.data[0].get("username", "Anonymous")
-            except Exception:
-                pass
+        profile = supabase.table("profiles").select("username,profile_pic_url,bio,id").eq("id", uid).execute()
+        pdata = profile.data[0] if profile.data else {"username": uname, "profile_pic_url": "", "bio": "", "id": uid}
 
         with st.container():
-            st.markdown(f"### 🎥 {title}")
-            st.markdown(f"**By:** @{username} | 🕒 {timestamp.split('T')[0] if timestamp else 'Unknown'}")
-            st.video(os.path.join(PUBLIC_DIR, vid))
-            if desc:
-                st.markdown(f"_{desc}_")
+            col1, col2 = st.columns([1, 6])
+            with col1:
+                st.image(pdata.get("profile_pic_url") or "https://via.placeholder.com/64", width=64)
+            with col2:
+                link = f"[**@{pdata.get('username')}**](https://magicals.streamlit.app/community.py/{pdata.get('username')})"
+                st.markdown(f"### {title}")
+                st.markdown(f"{link}  \n_{pdata.get('bio','')}_")
+                st.markdown(desc)
+            st.video(e["path"])
 
-            has_liked = user_id in liked_by if user_id else False
-            like_btn_label = f"❤️ {likes} Likes" if not has_liked else f"💖 {likes} Liked"
+            user = st.session_state.get("user")
+            like_key = f"like_{e['path']}"
+            if like_key not in st.session_state:
+                st.session_state[like_key] = False
 
-            if st.button(like_btn_label, key=vid):
-                if not user_id:
-                    st.warning("You must log in to like videos.")
-                elif not has_liked:
-                    likes += 1
-                    liked_by.append(user_id)
-                    meta["likes"] = likes
-                    meta["liked_by"] = liked_by
-                    with open(json_path, "w") as f:
-                        json.dump(meta, f, indent=4)
-                    st.rerun()
-                else:
-                    st.info("You already liked this Magical 💫")
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                if st.button(f"❤️ {likes}", key=e["path"]):
+                    if not user:
+                        st.warning("login to like")
+                    else:
+                        if not st.session_state[like_key]:
+                            m["likes"] = likes + 1
+                            st.session_state[like_key] = True
+                            with open(e["path"].replace(".mp4", ".json"), "w") as fh:
+                                json.dump(m, fh)
+                            try:
+                                supabase.table("magicals").update({"likes": m["likes"]}).eq("path", e["path"]).execute()
+                            except:
+                                pass
+                            st.experimental_rerun()
+                        else:
+                            st.info("already liked")
+            with c2:
+                if st.button("report", key="r_" + e["path"]):
+                    supabase.table("reports").insert({
+                        "path": e["path"],
+                        "reported_by": st.session_state.get('user', {}).get('email'),
+                        "timestamp": __import__('datetime').datetime.utcnow().isoformat()
+                    }).execute()
+                    st.success("reported")
 
             st.markdown("---")
             

@@ -4,31 +4,24 @@ import streamlit as st
 from supabase import create_client
 
 def get_client():
-    try:
-        if "supabase" in st.secrets:
-            url = st.secrets["supabase"]["url"]
-            key = st.secrets["supabase"]["key"]
-        else:
-            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            paths = [
-                os.path.join(root, "secrets.toml"),
-                os.path.join(root, "streamlit", "secrets.toml"),
-            ]
-            secrets_file = next((p for p in paths if os.path.exists(p)), None)
-            if not secrets_file:
-                raise FileNotFoundError("No secrets.toml found.")
-            secrets = toml.load(secrets_file)
-            url = secrets["supabase"]["url"]
-            key = secrets["supabase"]["key"]
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"Supabase init failed: {e}")
-        return None
+    if "supabase" in st.secrets:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
+    else:
+        path = os.path.join(os.getcwd(), "secrets.toml")
+        data = toml.load(path)
+        url = data["supabase"]["url"]
+        key = data["supabase"]["key"]
+    return create_client(url, key)
 
 supabase = get_client()
 
-def get_current_user():
-    session = st.session_state.get("session")
-    if not session or "user" not in session:
+def current_user():
+    u = st.session_state.get("user")
+    if not u:
         return None
-    return session["user"]
+    try:
+        r = supabase.table("profiles").select("*").eq("id", u["id"]).limit(1).execute()
+        return r.data[0] if r.data else None
+    except:
+        return None

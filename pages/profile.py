@@ -1,42 +1,28 @@
 import streamlit as st
+import os
 from utils.supabase_client import supabase
-
-st.title("👤 Profile")
-
-user = st.session_state.get("user")
-if not user:
-    st.warning("Please log in first!")
+st.set_page_config(page_title="profile")
+params = st.experimental_get_query_params()
+username = params.get("username", [None])[0]
+if not username and st.session_state.get("user"):
+    p = supabase.table("profiles").select("username").eq("id", st.session_state["user"]["id"]).execute()
+    username = p.data[0]["username"] if p.data else None
+if not username:
+    st.error("no username")
     st.stop()
-
-res = supabase.table("profiles").select("*").eq("id", user["id"]).execute()
-data = res.data[0] if res.data else {"username": "", "bio": ""}
-
-username = st.text_input("Username", data.get("username"))
-bio = st.text_area("Bio", data.get("bio"))
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("💾 Save Changes"):
-        supabase.table("profiles").upsert({
-            "id": user["id"],
-            "username": username,
-            "bio": bio
-        }).execute()
-        st.success("Profile updated!")
-
-with col2:
-    if st.button("🚪 Log Out"):
-        st.session_state.pop("user", None)
-        st.success("You’ve been logged out.")
-        st.rerun()
-
-with col3:
-    if st.button("🗑️ Delete Profile", type="primary"):
-        confirm = st.checkbox("Confirm delete")
-        if confirm:
-            supabase.table("profiles").delete().eq("id", user["id"]).execute()
-            st.session_state.pop("user", None)
-            st.warning("Profile deleted permanently.")
-            st.rerun()
-            
+res = supabase.table("profiles").select("*").eq("username", username).execute()
+if not res.data:
+    st.error("not found")
+    st.stop()
+profile = res.data[0]
+st.image(profile.get("profile_pic_url") or "https://via.placeholder.com/128", width=128)
+st.markdown(f\"# @{profile.get('username')}\")
+st.markdown(profile.get("bio",""))
+mag = supabase.table("magicals").select("*").eq("user_id", profile["id"]).order("timestamp", desc=True).execute()
+videos = mag.data if mag.data else []
+total_likes = sum(v.get("likes",0) for v in videos)
+st.markdown(f\"**total likes:** {total_likes}\")
+for v in videos:
+    st.markdown(f\"### {v.get('title')}\")
+    st.video(v.get("path"))
+    st.markdown(f\"❤️ {v.get('likes',0)}\")
