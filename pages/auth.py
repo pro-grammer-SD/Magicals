@@ -3,8 +3,6 @@ from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
 cookies = EncryptedCookieManager(prefix="magicals_", password="secret-key-auth")
-if not cookies.ready():
-    st.stop()
 
 st.set_page_config(page_title="Login / Signup", layout="centered")
 st.title("🔐 Login / Signup")
