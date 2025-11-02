@@ -53,24 +53,36 @@ if "user" in st.session_state:
         st.markdown("### 🎉 Welcome Back!")
         st.markdown(f"**Email:** {st.session_state.user['email']}")
         st.markdown(f"**User ID:** `{st.session_state.user['id'][:8]}...`")
-        
+
         alert(
             title=f"You're logged in as {st.session_state.user['email']}",
             key="success_alert"
         )
-        
+
         st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
-        
+
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if button("🚪 Logout", key="logout_btn", variant="destructive"):
-                cookies["access_token"] = ""
-                cookies.save()
+                try:
+                    # Properly log out from Supabase
+                    supabase.auth.sign_out()
+                except Exception:
+                    pass  # ignore if session already invalid
+                
+                # Clear cookies
+                if "access_token" in cookies:
+                    del cookies["access_token"]
+                    cookies.save()
+                
+                # Clear Streamlit session
                 st.session_state.clear()
-                st.rerun()
-    
-    st.stop()
+                
+                # Rerun to refresh UI
+                st.experimental_rerun()
 
+    st.stop()
+    
 # Auth page - Everything inside a card
 with card(key="auth_card"):
     # Header
