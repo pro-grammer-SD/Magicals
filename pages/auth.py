@@ -1,21 +1,22 @@
+import time
 import streamlit as st
 from streamlit_shadcn_ui import tabs, card, button, alert
 from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# Initialize cookies
+# ----------------- COOKIE INITIALIZATION -----------------
 cookies = EncryptedCookieManager(prefix="magicals_", password="secret-key-auth")
 if not cookies.ready():
     st.stop()
 
-# Page config
+# ----------------- PAGE CONFIG -----------------
 st.set_page_config(
     page_title="Login / Signup",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling
+# ----------------- CUSTOM CSS -----------------
 st.markdown("""
 <style>
     .main {
@@ -37,17 +38,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Check for existing session
+# ----------------- SESSION CHECK -----------------
 if "user" not in st.session_state and cookies.get("access_token"):
     try:
-        session = supabase.auth.get_user(cookies.get("access_token"))
-        if session and session.user:
-            st.session_state.user = {"id": session.user.id, "email": session.user.email}
+        token = cookies.get("access_token")
+        if token:
+            session = supabase.auth.get_user(token)
+            if session and getattr(session, "user", None):
+                st.session_state.user = {"id": session.user.id, "email": session.user.email}
+            else:
+                # token invalid or expired → remove cookie
+                if "access_token" in cookies:
+                    del cookies["access_token"]
+                    cookies.save()
     except Exception:
-        cookies["access_token"] = ""
-        cookies.save()
+        if "access_token" in cookies:
+            del cookies["access_token"]
+            cookies.save()
 
-# Logged in view
+# ----------------- LOGGED-IN VIEW -----------------
 if "user" in st.session_state:
     with card(key="logged_in_card"):
         st.markdown("### 🎉 Welcome Back!")
@@ -65,40 +74,41 @@ if "user" in st.session_state:
         with col2:
             if button("🚪 Logout", key="logout_btn", variant="destructive"):
                 try:
-                    # Properly log out from Supabase
+                    # 1️⃣ Properly log out from Supabase (server-side)
                     supabase.auth.sign_out()
                 except Exception:
                     pass  # ignore if session already invalid
-                
-                # Clear cookies
+
+                # 2️⃣ Delete access token cookie
                 if "access_token" in cookies:
                     del cookies["access_token"]
                     cookies.save()
-                
-                # Clear Streamlit session
-                st.session_state.clear()
-                
-                # Rerun to refresh UI
-                st.rerun()
+
+                # 3️⃣ Remove user from session
+                if "user" in st.session_state:
+                    del st.session_state["user"]
+
+                # 4️⃣ Feedback + rerun
+                st.success("✅ Logged out successfully! Redirecting...")
+                time.sleep(0.7)
+                st.experimental_rerun()
 
     st.stop()
-    
-# Auth page - Everything inside a card
+
+# ----------------- LOGIN / SIGNUP FORM -----------------
 with card(key="auth_card"):
-    # Header
     st.markdown("<h1 style='text-align: center; margin-bottom: 0.5rem;'>🔐 Welcome</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666; margin-bottom: 2rem;'>Sign in to your account or create a new one</p>", unsafe_allow_html=True)
-    
-    # Tabs for Login/Signup
+
     tab = tabs(
         options=["Login", "Sign Up"],
         default_value="Login",
         key="auth_tabs"
     )
-    
+
     st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
-    
-    # Form inputs
+
+    # Inputs
     st.markdown("#### Email Address")
     email = st.text_input(
         "Email",
@@ -106,7 +116,7 @@ with card(key="auth_card"):
         key="email_field",
         label_visibility="collapsed"
     )
-    
+
     st.markdown("#### Password")
     password = st.text_input(
         "Password",
@@ -115,19 +125,18 @@ with card(key="auth_card"):
         key="password_field",
         label_visibility="collapsed"
     )
-    
-    # Add spacing
+
     st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
-    
-    # Submit button
+
+    # Buttons
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if tab == "Login":
             submit = button("🔓 Sign In", key="login_btn", variant="default")
         else:
             submit = button("✨ Create Account", key="signup_btn", variant="default")
-    
-    # Handle form submission
+
+    # ----------------- AUTH LOGIC -----------------
     if submit:
         if not email or not password:
             alert(
@@ -146,19 +155,22 @@ with card(key="auth_card"):
                             key="signup_success"
                         )
                         st.balloons()
-                else:
+                else:  # LOGIN
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     if res.user:
+                        # Save token & set session
                         cookies["access_token"] = res.session.access_token
                         cookies.save()
                         st.session_state.user = {"id": res.user.id, "email": res.user.email}
+
                         alert(
                             text=f"🎉 Welcome back, {res.user.email}!",
                             variant="success",
                             key="login_success"
                         )
                         st.balloons()
-                        st.rerun()
+                        time.sleep(0.5)
+                        st.experimental_rerun()
                     else:
                         alert(
                             text="❌ Invalid credentials. Please try again.",
@@ -173,13 +185,13 @@ with card(key="auth_card"):
                     error_msg = "Invalid email or password. Please try again."
                 elif "User already registered" in error_msg:
                     error_msg = "This email is already registered. Please login instead."
-                
+
                 alert(
                     text=f"⚠️ {error_msg}",
                     variant="destructive",
                     key="auth_error"
                 )
 
-# ✅ Footer moved OUTSIDE the card
+# ----------------- FOOTER -----------------
 st.markdown("<hr style='margin: 2rem 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #999; font-size: 0.85rem;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
