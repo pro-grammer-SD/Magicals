@@ -1,6 +1,5 @@
 streamlit
 supabase
-supabase-py
 python-dotenv
 toml
 opennsfw2
