@@ -62,10 +62,20 @@ if "user" in st.session_state:
                     supabase.auth.sign_out()
                 except Exception:
                     pass
-                if "access_token" in cookies:
-                    del cookies["access_token"]
-                cookies.save()
-                st.session_state.clear()
+
+                # --- FULL COOKIE CLEAR ---
+                cookies._cookies.clear()  # clear all encrypted cookies from disk
+                cookies.clear()           # clear cookies from memory
+                cookies.save()            # save changes to remove persisted cookie
+
+                # --- CLEAR STREAMLIT SESSION COMPLETELY ---
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+
+                st.cache_data.clear()
+                st.cache_resource.clear()
+
+                st.experimental_set_query_params()  # reset URL params
                 st.rerun()
     st.stop()
 
