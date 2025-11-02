@@ -3,7 +3,7 @@ import streamlit as st
 import os
 import sys
 import subprocess
-import json
+import shutil
 from datetime import datetime
 from utils.supabase_client import supabase, current_user
 from utils.nsfw_check import check_video_nsfw
@@ -23,15 +23,26 @@ try:
 except Exception:
     pass
 
+base_media_dir = os.path.join("/home", username, "media")
+fallback_dir = os.path.expanduser("~/.local/share/magicals/media")
+try:
+    os.makedirs(base_media_dir, exist_ok=True)
+    testfile = os.path.join(base_media_dir, "permtest")
+    with open(testfile, "w") as f:
+        f.write("ok")
+    os.remove(testfile)
+    media_dir = base_media_dir
+except Exception:
+    media_dir = fallback_dir
+    shutil.rmtree(media_dir, ignore_errors=True)
+    os.makedirs(media_dir, exist_ok=True)
+
 mode = st.radio("mode", ["upload video", "upload script"])
 
 def upload_to_supabase(path, file_name):
     with open(path, "rb") as f:
         supabase.storage.from_(bucket_name).upload(file_name, f, {"upsert": True})
     return supabase.storage.from_(bucket_name).get_public_url(file_name)
-
-media_dir = os.path.join("/home", username, "media")
-os.makedirs(media_dir, exist_ok=True)
 
 if mode == "upload video":
     uploaded = st.file_uploader("mp4", type=["mp4"])
