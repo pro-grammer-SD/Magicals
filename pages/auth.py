@@ -79,7 +79,7 @@ if "user" in st.session_state:
                 st.session_state.clear()
                 
                 # Rerun to refresh UI
-                st.experimental_rerun()
+                st.rerun()
 
     st.stop()
     
