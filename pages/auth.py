@@ -39,7 +39,7 @@ if "user" not in st.session_state and cookies.get("access_token"):
         session = supabase.auth.get_user(token)
         if session and getattr(session, "user", None):
             st.session_state.user = {"id": session.user.id, "email": session.user.email}
-            alert(f"🎉 Welcome back, {session.user.email}!", variant="success", key="welcome_back")
+            alert(title=f"🎉 Welcome back, {session.user.email}!", variant="success", key="welcome_back")
     except Exception:
         if "access_token" in cookies:
             del cookies["access_token"]
@@ -52,7 +52,7 @@ if "user" in st.session_state:
         st.markdown(f"**Email:** {st.session_state.user['email']}")
         st.markdown(f"**User ID:** `{st.session_state.user['id'][:8]}...`")
 
-        alert(f"You're logged in as {st.session_state.user['email']}", variant="success", key="logged_in_alert")
+        alert(title=f"You're logged in as {st.session_state.user['email']}", variant="success", key="logged_in_alert")
         st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
 
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -92,13 +92,13 @@ with card(key="auth_card"):
     # Handle auth
     if submit:
         if not email or not password:
-            alert("⚠️ Please fill all fields.", variant="destructive", key="missing_fields")
+            alert(title="⚠️ Please fill all fields.", variant="destructive", key="missing_fields")
         else:
             try:
                 if mode == "Sign Up":
                     res = supabase.auth.sign_up({"email": email, "password": password})
                     if res.user:
-                        alert("✅ Account created! Please verify your email before logging in.", variant="success", key="signup_ok")
+                        alert(title="✅ Account created! Please verify your email before logging in.", variant="success", key="signup_ok")
                         st.balloons()
                 else:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
@@ -119,7 +119,7 @@ with card(key="auth_card"):
                     msg = "Invalid email or password."
                 elif "User already registered" in msg:
                     msg = "This email is already registered. Please login instead."
-                alert(f"⚠️ {msg}", variant="destructive", key="auth_error")
+                alert(title=f"⚠️ {msg}", variant="destructive", key="auth_error")
 
 # ---------------- FOOTER ----------------
 st.markdown("<hr style='margin-top: 2rem; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
