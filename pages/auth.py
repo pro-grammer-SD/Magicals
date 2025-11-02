@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_shadcn_ui import tabs, card, input as shadcn_input, button, badge, alert
+from streamlit_shadcn_ui import tabs, card, button, alert
 from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
