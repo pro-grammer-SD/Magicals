@@ -4,7 +4,6 @@ import os
 import sys
 import subprocess
 import json
-import tempfile
 from datetime import datetime
 from utils.supabase_client import supabase, current_user
 from utils.nsfw_check import check_video_nsfw
@@ -31,6 +30,9 @@ def upload_to_supabase(path, file_name):
         supabase.storage.from_(bucket_name).upload(file_name, f, {"upsert": True})
     return supabase.storage.from_(bucket_name).get_public_url(file_name)
 
+media_dir = os.path.join("/home", username, "media")
+os.makedirs(media_dir, exist_ok=True)
+
 if mode == "upload video":
     uploaded = st.file_uploader("mp4", type=["mp4"])
     title = st.text_input("title")
@@ -41,16 +43,16 @@ if mode == "upload video":
         elif not title.strip():
             st.error("title required")
         else:
-            tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-            tmp.write(uploaded.read())
-            tmp.flush()
-            ok, info = check_video_nsfw(tmp.name)
+            path = os.path.join(media_dir, uploaded.name)
+            with open(path, "wb") as f:
+                f.write(uploaded.read())
+            ok, info = check_video_nsfw(path)
             if ok:
                 st.error("nsfw detected. cannot publish")
             else:
                 safe_title = title.replace(" ", "_").replace("/", "_")
                 cloud_path = f"{username}/{safe_title}.mp4"
-                url = upload_to_supabase(tmp.name, cloud_path)
+                url = upload_to_supabase(path, cloud_path)
                 meta = {"title": title, "description": desc, "user_id": user["id"], "username": username, "url": url, "likes": 0, "timestamp": datetime.utcnow().isoformat()}
                 supabase.table("magicals").insert(meta).execute()
                 st.success("published")
@@ -67,11 +69,10 @@ if mode == "upload script":
         elif not title.strip() or not scene.strip():
             st.error("title and scene required")
         else:
-            tmpdir = tempfile.mkdtemp()
-            script_path = os.path.join(tmpdir, uploaded.name)
+            script_path = os.path.join(media_dir, uploaded.name)
             with open(script_path, "wb") as f:
                 f.write(uploaded.read())
-            cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "--media_dir", tmpdir, "--progress_bar", "display"]
+            cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "--media_dir", media_dir, "--progress_bar", "display"]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             logs = st.empty()
             output_path = None
