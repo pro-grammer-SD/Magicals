@@ -106,11 +106,11 @@ with card(key="auth_card"):
                         cookies["access_token"] = res.session.access_token
                         cookies.save()
                         st.session_state.user = {"id": res.user.id, "email": res.user.email}
-                        alert(f"🎉 Welcome {res.user.email}!", variant="success", key="login_ok")
+                        alert(title=f"🎉 Welcome {res.user.email}!", key="login_ok")
                         st.balloons()
                         st.rerun()
                     else:
-                        alert("❌ Invalid credentials.", variant="destructive", key="invalid_login")
+                        alert(title="❌ Invalid credentials.", key="invalid_login")
             except Exception as e:
                 msg = str(e)
                 if "Email not confirmed" in msg:
