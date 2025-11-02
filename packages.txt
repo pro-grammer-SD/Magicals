@@ -1,1 +1,1 @@
-libcairo2-dev pkg-config python3-dev ffmpeg libsm6 libxext6 build-essential
+libcairo2-dev libpango1.0-dev libglib2.0-dev pkg-config python3-dev ffmpeg libsm6 libxext6 build-essential
