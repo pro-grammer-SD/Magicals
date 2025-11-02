@@ -170,7 +170,7 @@ with card(key="auth_card"):
                     key="auth_error"
                 )
     
-    # Footer
+    # Footer inside the card
     st.markdown("<hr style='margin: 2rem 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #999; font-size: 0.85rem;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
     
