@@ -1,5 +1,9 @@
 import streamlit as st
+from pathlib import Path
 from utils.supabase_client import supabase
+
+PROJECT_ROOT = Path(__file__).parent.parent
+DEFAULT_AVATAR = PROJECT_ROOT / "assets" / "def_pfp.png"
 
 st.set_page_config(page_title="Profile")
 params = st.query_params
@@ -19,7 +23,7 @@ if not res.data:
     st.stop()
 
 profile = res.data[0]
-st.image(profile.get("avatar_url") or "../assets/def_pfp.png", width=128)
+st.image(profile.get("avatar_url") or str(DEFAULT_AVATAR), width=128)
 st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio", ""))
 

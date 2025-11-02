@@ -1,7 +1,11 @@
 import streamlit as st
+from pathlib import Path
 import os
 import json
 from utils.supabase_client import supabase
+
+PROJECT_ROOT = Path(__file__).parent.parent
+DEFAULT_AVATAR = PROJECT_ROOT / "assets" / "def_pfp.png"
 
 st.set_page_config(page_title="discover", layout="wide")
 st.title("discover")
@@ -42,7 +46,7 @@ else:
         with st.container():
             col1, col2 = st.columns([1, 6])
             with col1:
-                st.image(pdata.get("profile_pic_url") or "../assets/def_pfp.png", width=64)
+                st.image(pdata.get("profile_pic_url") or str(DEFAULT_AVATAR), width=64)
             with col2:
                 link = f"[**@{pdata.get('username')}**](https://magicals.streamlit.app/community.py/{pdata.get('username')})"
                 st.markdown(f"### {title}")
