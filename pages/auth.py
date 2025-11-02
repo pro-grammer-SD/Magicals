@@ -156,7 +156,6 @@ with card(key="auth_card"):
                         )
             except Exception as e:
                 error_msg = str(e)
-                # Make error messages more user-friendly
                 if "Email not confirmed" in error_msg:
                     error_msg = "Please verify your email before logging in. Check your inbox for the verification link."
                 elif "Invalid login credentials" in error_msg:
@@ -169,8 +168,7 @@ with card(key="auth_card"):
                     variant="destructive",
                     key="auth_error"
                 )
-    
-    # Footer inside the card
-    st.markdown("<hr style='margin: 2rem 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #999; font-size: 0.85rem;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
-    
+
+# ✅ Footer moved OUTSIDE the card
+st.markdown("<hr style='margin: 2rem 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #999; font-size: 0.85rem;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
