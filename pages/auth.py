@@ -1,197 +1,126 @@
-import time
 import streamlit as st
-from streamlit_shadcn_ui import tabs, card, button, alert
+from streamlit_shadcn_ui import card, tabs, button, alert
 from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# ----------------- COOKIE INITIALIZATION -----------------
+# ---------------- COOKIE SETUP ----------------
 cookies = EncryptedCookieManager(prefix="magicals_", password="secret-key-auth")
 if not cookies.ready():
     st.stop()
 
-# ----------------- PAGE CONFIG -----------------
-st.set_page_config(
-    page_title="Login / Signup",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="Login / Signup", layout="centered")
 
-# ----------------- CUSTOM CSS -----------------
+# ---------------- STYLING ----------------
 st.markdown("""
 <style>
     .main {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem 0;
         min-height: 100vh;
+        padding: 2rem;
         display: flex;
-        align-items: center;
         justify-content: center;
-    }
-    .stApp {
-        background: transparent;
+        align-items: center;
     }
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
         max-width: 500px;
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- SESSION CHECK -----------------
+# ---------------- SESSION VALIDATION ----------------
 if "user" not in st.session_state and cookies.get("access_token"):
     try:
         token = cookies.get("access_token")
-        if token:
-            session = supabase.auth.get_user(token)
-            if session and getattr(session, "user", None):
-                st.session_state.user = {"id": session.user.id, "email": session.user.email}
-            else:
-                # token invalid or expired → remove cookie
-                if "access_token" in cookies:
-                    del cookies["access_token"]
-                    cookies.save()
+        session = supabase.auth.get_user(token)
+        if session and getattr(session, "user", None):
+            st.session_state.user = {"id": session.user.id, "email": session.user.email}
+            alert(f"🎉 Welcome back, {session.user.email}!", variant="success", key="welcome_back")
     except Exception:
         if "access_token" in cookies:
             del cookies["access_token"]
             cookies.save()
 
-# ----------------- LOGGED-IN VIEW -----------------
+# ---------------- LOGGED-IN VIEW ----------------
 if "user" in st.session_state:
     with card(key="logged_in_card"):
-        st.markdown("### 🎉 Welcome Back!")
+        st.markdown("### 🎉 You’re Logged In")
         st.markdown(f"**Email:** {st.session_state.user['email']}")
         st.markdown(f"**User ID:** `{st.session_state.user['id'][:8]}...`")
 
-        alert(
-            title=f"You're logged in as {st.session_state.user['email']}",
-            key="success_alert"
-        )
-
-        st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+        alert(f"You're logged in as {st.session_state.user['email']}", variant="success", key="logged_in_alert")
+        st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if button("🚪 Logout", key="logout_btn", variant="destructive"):
+            if button("🚪 Logout", variant="destructive", key="logout_btn"):
                 try:
-                    # 1️⃣ Properly log out from Supabase (server-side)
                     supabase.auth.sign_out()
                 except Exception:
-                    pass  # ignore if session already invalid
-
-                # 2️⃣ Delete access token cookie
+                    pass
                 if "access_token" in cookies:
                     del cookies["access_token"]
-                    cookies.save()
-
-                # 3️⃣ Remove user from session
-                if "user" in st.session_state:
-                    del st.session_state["user"]
-
-                # 4️⃣ Feedback + rerun
-                st.success("✅ Logged out successfully! Redirecting...")
-                time.sleep(0.7)
+                cookies.save()
+                st.session_state.clear()
                 st.rerun()
-
     st.stop()
 
-# ----------------- LOGIN / SIGNUP FORM -----------------
+# ---------------- AUTH FORM ----------------
 with card(key="auth_card"):
-    st.markdown("<h1 style='text-align: center; margin-bottom: 0.5rem;'>🔐 Welcome</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666; margin-bottom: 2rem;'>Sign in to your account or create a new one</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>🔐 Login / Sign Up</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>Access your account below</p>", unsafe_allow_html=True)
 
-    tab = tabs(
-        options=["Login", "Sign Up"],
-        default_value="Login",
-        key="auth_tabs"
-    )
+    # Tabs for mode selection
+    mode = tabs(options=["Login", "Sign Up"], default_value="Login", key="auth_tabs")
 
-    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
 
-    # Inputs
-    st.markdown("#### Email Address")
-    email = st.text_input(
-        "Email",
-        placeholder="Enter your email",
-        key="email_field",
-        label_visibility="collapsed"
-    )
+    email = st.text_input("Email", placeholder="Enter your email", label_visibility="collapsed", key="email_field")
+    password = st.text_input("Password", placeholder="Enter your password", type="password", label_visibility="collapsed", key="password_field")
 
-    st.markdown("#### Password")
-    password = st.text_input(
-        "Password",
-        type="password",
-        placeholder="Enter your password",
-        key="password_field",
-        label_visibility="collapsed"
-    )
+    st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
-
-    # Buttons
+    # Centered button
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if tab == "Login":
-            submit = button("🔓 Sign In", key="login_btn", variant="default")
-        else:
-            submit = button("✨ Create Account", key="signup_btn", variant="default")
+        submit = button(f"{'🔓 Sign In' if mode == 'Login' else '✨ Create Account'}", key="submit_btn", variant="default")
 
-    # ----------------- AUTH LOGIC -----------------
+    # Handle auth
     if submit:
         if not email or not password:
-            alert(
-                text="⚠️ Please fill in all fields",
-                variant="destructive",
-                key="error_alert"
-            )
+            alert("⚠️ Please fill all fields.", variant="destructive", key="missing_fields")
         else:
             try:
-                if tab == "Sign Up":
+                if mode == "Sign Up":
                     res = supabase.auth.sign_up({"email": email, "password": password})
                     if res.user:
-                        alert(
-                            text="✅ Account created! Please check your email to verify your account.",
-                            variant="success",
-                            key="signup_success"
-                        )
+                        alert("✅ Account created! Please verify your email before logging in.", variant="success", key="signup_ok")
                         st.balloons()
-                else:  # LOGIN
+                else:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    if res.user:
-                        # Save token & set session
+                    if res.user and res.session:
                         cookies["access_token"] = res.session.access_token
                         cookies.save()
                         st.session_state.user = {"id": res.user.id, "email": res.user.email}
-
-                        alert(
-                            text=f"🎉 Welcome back, {res.user.email}!",
-                            variant="success",
-                            key="login_success"
-                        )
+                        alert(f"🎉 Welcome {res.user.email}!", variant="success", key="login_ok")
                         st.balloons()
-                        time.sleep(0.5)
                         st.rerun()
                     else:
-                        alert(
-                            text="❌ Invalid credentials. Please try again.",
-                            variant="destructive",
-                            key="invalid_creds"
-                        )
+                        alert("❌ Invalid credentials.", variant="destructive", key="invalid_login")
             except Exception as e:
-                error_msg = str(e)
-                if "Email not confirmed" in error_msg:
-                    error_msg = "Please verify your email before logging in. Check your inbox for the verification link."
-                elif "Invalid login credentials" in error_msg:
-                    error_msg = "Invalid email or password. Please try again."
-                elif "User already registered" in error_msg:
-                    error_msg = "This email is already registered. Please login instead."
+                msg = str(e)
+                if "Email not confirmed" in msg:
+                    msg = "Please verify your email before logging in."
+                elif "Invalid login credentials" in msg:
+                    msg = "Invalid email or password."
+                elif "User already registered" in msg:
+                    msg = "This email is already registered. Please login instead."
+                alert(f"⚠️ {msg}", variant="destructive", key="auth_error")
 
-                alert(
-                    text=f"⚠️ {error_msg}",
-                    variant="destructive",
-                    key="auth_error"
-                )
-
-# ----------------- FOOTER -----------------
-st.markdown("<hr style='margin: 2rem 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #999; font-size: 0.85rem;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
+# ---------------- FOOTER ----------------
+st.markdown("<hr style='margin-top: 2rem; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#aaa;'>Protected by magic 🪄</p>", unsafe_allow_html=True)
