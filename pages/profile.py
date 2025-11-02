@@ -19,7 +19,7 @@ if not res.data:
     st.stop()
 
 profile = res.data[0]
-st.image(profile.get("avatar_url") or "https://via.placeholder.com/128", width=128)
+st.image(profile.get("avatar_url"), width=128) or st.html("""<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=account_circle" />""")
 st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio", ""))
 

@@ -42,7 +42,7 @@ else:
         with st.container():
             col1, col2 = st.columns([1, 6])
             with col1:
-                st.image(pdata.get("profile_pic_url") or "https://via.placeholder.com/64", width=64)
+                st.image(pdata.get("profile_pic_url"), width=64) or st.html("""<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=account_circle" />""")
             with col2:
                 link = f"[**@{pdata.get('username')}**](https://magicals.streamlit.app/community.py/{pdata.get('username')})"
                 st.markdown(f"### {title}")
