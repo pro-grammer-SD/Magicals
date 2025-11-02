@@ -91,7 +91,7 @@ if "user" in st.session_state:
                 # 4️⃣ Feedback + rerun
                 st.success("✅ Logged out successfully! Redirecting...")
                 time.sleep(0.7)
-                st.experimental_rerun()
+                st.rerun()
 
     st.stop()
 
@@ -170,7 +170,7 @@ with card(key="auth_card"):
                         )
                         st.balloons()
                         time.sleep(0.5)
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         alert(
                             text="❌ Invalid credentials. Please try again.",
