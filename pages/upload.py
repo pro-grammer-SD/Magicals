@@ -2,12 +2,11 @@ import streamlit as st
 import os
 import sys
 import subprocess
-import json
+import re
 import tempfile
 from datetime import datetime
 from utils.supabase_client import supabase, current_user
 from utils.nsfw_check import check_video_nsfw
-from supabase.lib.client_options import ClientOptions
 
 st.set_page_config(page_title="upload", layout="wide")
 user = st.session_state.get("user")
@@ -70,15 +69,18 @@ if mode == "upload script":
             script_path = os.path.join(tmpdir, uploaded.name)
             with open(script_path, "wb") as f:
                 f.write(uploaded.read())
-            output_name = f"{title.replace(' ','_')}_{scene}.mp4"
-            output_path = os.path.join(tmpdir, output_name)
+            output_name = f"{title.replace(' ', '_')}_{scene}.mp4"
             cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "-o", output_name, "--media_dir", tmpdir, "--progress_bar", "display"]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             logs = st.empty()
+            output_path = None
             for ln in proc.stdout:
                 logs.text(ln)
+                match = re.search(r"File saved at:\s*(.*\.mp4)", ln)
+                if match:
+                    output_path = match.group(1).strip()
             proc.wait()
-            if proc.returncode == 0 and os.path.exists(output_path):
+            if output_path and os.path.exists(output_path):
                 ok, info = check_video_nsfw(output_path)
                 if ok:
                     os.remove(output_path)
@@ -92,5 +94,5 @@ if mode == "upload script":
                     st.success("rendered and published")
                     st.video(url)
             else:
-                st.error("render failed")
+                st.error("render failed or output not found")
                 
