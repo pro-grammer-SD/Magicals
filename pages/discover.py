@@ -70,7 +70,7 @@ else:
                                 supabase.table("magicals").update({"likes": m["likes"]}).eq("path", e["path"]).execute()
                             except:
                                 pass
-                            st.experimental_rerun()
+                            st.rerun()
                         else:
                             st.info("already liked")
             with c2:

@@ -15,6 +15,6 @@ if st.button(mode):
         try:
             user = supabase.auth.sign_in_with_password({"email": email, "password": password})
             st.session_state.user = {"id": user.user.id, "email": user.user.email}
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error(str(e))
