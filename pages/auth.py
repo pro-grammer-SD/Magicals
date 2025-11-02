@@ -55,8 +55,7 @@ if "user" in st.session_state:
         st.markdown(f"**User ID:** `{st.session_state.user['id'][:8]}...`")
         
         alert(
-            text=f"You're logged in as {st.session_state.user['email']}",
-            variant="success",
+            title=f"You're logged in as {st.session_state.user['email']}",
             key="success_alert"
         )
         
