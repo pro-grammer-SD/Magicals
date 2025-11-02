@@ -16,13 +16,13 @@ if not res.data:
     st.stop()
 profile = res.data[0]
 st.image(profile.get("profile_pic_url") or "https://via.placeholder.com/128", width=128)
-st.markdown(f\"# @{profile.get('username')}\")
+st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio",""))
 mag = supabase.table("magicals").select("*").eq("user_id", profile["id"]).order("timestamp", desc=True).execute()
 videos = mag.data if mag.data else []
 total_likes = sum(v.get("likes",0) for v in videos)
-st.markdown(f\"**total likes:** {total_likes}\")
+st.markdown(f"**total likes:** {total_likes}")
 for v in videos:
-    st.markdown(f\"### {v.get('title')}\")
+    st.markdown(f"### {v.get('title')}")
     st.video(v.get("path"))
-    st.markdown(f\"❤️ {v.get('likes',0)}\")
+    st.markdown(f"❤️ {v.get('likes',0)}")

@@ -46,7 +46,7 @@ else:
             with col2:
                 link = f"[**@{pdata.get('username')}**](https://magicals.streamlit.app/community.py/{pdata.get('username')})"
                 st.markdown(f"### {title}")
-                st.markdown(f"{link}  \n_{pdata.get('bio','')}_")
+                st.markdown(f"{link}  n_{pdata.get('bio','')}_")
                 st.markdown(desc)
             st.video(e["path"])
 

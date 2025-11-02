@@ -27,8 +27,8 @@ if mode == "upload video":
         elif not title.strip():
             st.error("title required")
         else:
-            safe_title = title.replace(\" \", \"_\").replace(\"/\",\"_\")
-            final = os.path.join(base, f\"{safe_title}.mp4\")
+            safe_title = title.replace(" ", "_").replace("/","_")
+            final = os.path.join(base, f"{safe_title}.mp4")
             if os.path.exists(final):
                 st.error("title exists")
             else:
@@ -60,13 +60,13 @@ if mode == "upload script":
         elif not title.strip() or not scene.strip():
             st.error("title and scene required")
         else:
-            safe_title = title.replace(\" \",\"_\").replace(\"/\",\"_\")
+            safe_title = title.replace(" ","_").replace("/","_")
             tmpdir = os.path.join("/home", username, "media")
             os.makedirs(tmpdir, exist_ok=True)
             script_path = os.path.join(tmpdir, uploaded.name)
             with open(script_path, "wb") as f:
                 f.write(uploaded.read())
-            output_name = f\"{safe_title}_{scene}.mp4\"
+            output_name = f"{safe_title}_{scene}.mp4"
             output_path = os.path.join(os.path.dirname(tmpdir), "1440p60", output_name)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "-o", output_name, "--media_dir", os.path.join("/home", username, "media"), "--progress_bar", "display"]

@@ -9,5 +9,5 @@ i=0
 for u in users:
     with cols[i%4]:
         st.image(u.get("profile_pic_url") or "https://via.placeholder.com/96", width=96)
-        st.markdown(f\"### [{u.get('username')}](profile?username={u.get('username')})\")
+        st.markdown(f"### [{u.get('username')}](profile?username={u.get('username')})")
     i+=1
