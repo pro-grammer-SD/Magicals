@@ -22,7 +22,7 @@ if "user" not in st.session_state and cookies.get("access_token"):
 if "user" in st.session_state:
     st.success(f"Logged in as {st.session_state.user['email']}")
     if st.button("Logout"):
-        cookies["access_token"] = ""
+        del cookies["access_token"]
         cookies.save()
         st.session_state.clear()
         st.rerun()
