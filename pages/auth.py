@@ -2,7 +2,7 @@ import streamlit as st
 from utils.supabase_client import supabase
 from streamlit_cookies_manager import EncryptedCookieManager
 
-cookies = EncryptedCookieManager(prefix="magicals_")
+cookies = EncryptedCookieManager(prefix="magicals_", password="secret-key-auth")
 
 if not cookies.ready():
     st.stop()
