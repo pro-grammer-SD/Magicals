@@ -1,4 +1,5 @@
 streamlit
+streamlit-shadcn-ui
 streamlit-cookies-manager
 supabase
 python-dotenv
