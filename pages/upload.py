@@ -1,4 +1,3 @@
-import re
 import streamlit as st
 import os
 import sys
@@ -7,7 +6,6 @@ import shutil
 from datetime import datetime
 from utils.supabase_client import supabase, current_user
 from utils.nsfw_check import check_video_nsfw
-from supabase.lib.client_options import ClientOptions
 
 st.set_page_config(page_title="upload", layout="wide")
 user = st.session_state.get("user")
@@ -23,19 +21,20 @@ try:
 except Exception:
     pass
 
-base_media_dir = os.path.join("/home", username, "media")
-fallback_dir = os.path.expanduser("~/.local/share/magicals/media")
+base_media = os.path.join("/home", username, "media")
+uploads_dir = os.path.join(base_media, "uploads")
+renders_dir = os.path.join(base_media, "1440p60")
+
 try:
-    os.makedirs(base_media_dir, exist_ok=True)
-    testfile = os.path.join(base_media_dir, "permtest")
-    with open(testfile, "w") as f:
-        f.write("ok")
-    os.remove(testfile)
-    media_dir = base_media_dir
-except Exception:
-    media_dir = fallback_dir
-    shutil.rmtree(media_dir, ignore_errors=True)
-    os.makedirs(media_dir, exist_ok=True)
+    os.makedirs(uploads_dir, exist_ok=True)
+    os.makedirs(renders_dir, exist_ok=True)
+except PermissionError:
+    base_media = os.path.expanduser("~/.local/share/magicals/media")
+    uploads_dir = os.path.join(base_media, "uploads")
+    renders_dir = os.path.join(base_media, "1440p60")
+    shutil.rmtree(base_media, ignore_errors=True)
+    os.makedirs(uploads_dir, exist_ok=True)
+    os.makedirs(renders_dir, exist_ok=True)
 
 mode = st.radio("mode", ["upload video", "upload script"])
 
@@ -45,7 +44,7 @@ def upload_to_supabase(path, file_name):
     return supabase.storage.from_(bucket_name).get_public_url(file_name)
 
 if mode == "upload video":
-    uploaded = st.file_uploader("mp4", type=["mp4"])
+    uploaded = st.file_uploader("mp4", type=["mp4", "mpeg"])
     title = st.text_input("title")
     desc = st.text_area("description")
     if uploaded and st.button("scan & publish"):
@@ -54,16 +53,16 @@ if mode == "upload video":
         elif not title.strip():
             st.error("title required")
         else:
-            path = os.path.join(media_dir, uploaded.name)
-            with open(path, "wb") as f:
+            upload_path = os.path.join(uploads_dir, uploaded.name)
+            with open(upload_path, "wb") as f:
                 f.write(uploaded.read())
-            ok, info = check_video_nsfw(path)
+            ok, info = check_video_nsfw(upload_path)
             if ok:
                 st.error("nsfw detected. cannot publish")
             else:
                 safe_title = title.replace(" ", "_").replace("/", "_")
                 cloud_path = f"{username}/{safe_title}.mp4"
-                url = upload_to_supabase(path, cloud_path)
+                url = upload_to_supabase(upload_path, cloud_path)
                 meta = {"title": title, "description": desc, "user_id": user["id"], "username": username, "url": url, "likes": 0, "timestamp": datetime.utcnow().isoformat()}
                 supabase.table("magicals").insert(meta).execute()
                 st.success("published")
@@ -80,20 +79,18 @@ if mode == "upload script":
         elif not title.strip() or not scene.strip():
             st.error("title and scene required")
         else:
-            script_path = os.path.join(media_dir, uploaded.name)
+            script_path = os.path.join(renders_dir, uploaded.name)
             with open(script_path, "wb") as f:
                 f.write(uploaded.read())
-            cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "--media_dir", media_dir, "--progress_bar", "display"]
+            output_name = f"{os.path.splitext(uploaded.name)[0]}_{scene}.mp4"
+            output_path = os.path.join(renders_dir, output_name)
+            cmd = [sys.executable, "-m", "manim", script_path, scene, "-qp", "--media_dir", base_media, "--progress_bar", "display"]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             logs = st.empty()
-            output_path = None
             for ln in proc.stdout:
                 logs.text(ln)
-                match = re.search(r"(?P<path>\/[^\s]*1440p60[^\s]*\.mp4)", ln)
-                if match:
-                    output_path = match.group("path")
             proc.wait()
-            if proc.returncode == 0 and output_path and os.path.exists(output_path):
+            if proc.returncode == 0 and os.path.exists(output_path):
                 ok, info = check_video_nsfw(output_path)
                 if ok:
                     os.remove(output_path)
