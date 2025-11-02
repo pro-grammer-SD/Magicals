@@ -32,7 +32,7 @@ if st.button(mode):
                 if user:
                     st.session_state.user = {"id": user.id, "email": user.email}
                     st.success(f"Welcome {user.email}!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Invalid credentials or no response.")
         except Exception as e:
