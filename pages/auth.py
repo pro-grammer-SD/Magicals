@@ -63,19 +63,18 @@ if "user" in st.session_state:
                 except Exception:
                     pass
 
-                # --- FULL COOKIE CLEAR ---
-                cookies._cookies.clear()  # clear all encrypted cookies from disk
-                cookies.clear()           # clear cookies from memory
-                cookies.save()            # save changes to remove persisted cookie
+                # ✅ Properly clear ALL app cookies
+                for cookie_name in ["access_token"]:  # add any others you use
+                    if cookie_name in cookies:
+                        del cookies[cookie_name]
+                cookies.save()  # must call this to persist deletion
 
-                # --- CLEAR STREAMLIT SESSION COMPLETELY ---
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-
+                # ✅ Optional: wipe all cache and session state
+                st.session_state.clear()
                 st.cache_data.clear()
                 st.cache_resource.clear()
 
-                st.experimental_set_query_params()  # reset URL params
+                # ✅ Force reload UI
                 st.rerun()
     st.stop()
 
