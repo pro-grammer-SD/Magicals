@@ -5,6 +5,7 @@ toml
 opennsfw2
 torch
 torchvision
+tensorflow
 opencv-python-headless
 moviepy
 plotly
