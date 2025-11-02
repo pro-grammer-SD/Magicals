@@ -3,6 +3,7 @@ streamlit-cookies-manager
 supabase
 python-dotenv
 toml
+manim
 opennsfw2
 torch
 torchvision
