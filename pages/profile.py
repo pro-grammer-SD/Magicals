@@ -38,10 +38,11 @@ if user and user.get("id") == profile.get("id"):
         file_name = f"{username}_{int(datetime.utcnow().timestamp())}.{ext}"
         data = uploaded.read()
 
+        # All header values must be strings for storage3
         supabase.storage.from_(bucket).upload(
             file_name,
             data,
-            {"upsert": True, "content-type": f"image/{ext}"}
+            {"upsert": "true", "content-type": f"image/{ext}"}
         )
 
         public_url = supabase.storage.from_(bucket).get_public_url(file_name)
