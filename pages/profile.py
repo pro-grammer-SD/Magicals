@@ -24,7 +24,7 @@ if not res.data:
     st.stop()
 
 profile = res.data[0]
-avatar_url = profile.get("avatar_url") or str(DEFAULT_AVATAR)
+avatar_url = (profile.get("avatar_url") or str(DEFAULT_AVATAR)) + f"?v={int(datetime.utcnow().timestamp())}"
 st.image(avatar_url, width=128)
 st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio", ""))
@@ -38,7 +38,6 @@ if user and user.get("id") == profile.get("id"):
         file_name = f"{username}_{int(datetime.utcnow().timestamp())}.{ext}"
         data = uploaded.read()
 
-        # All header values must be strings for storage3
         supabase.storage.from_(bucket).upload(
             file_name,
             data,
@@ -48,8 +47,15 @@ if user and user.get("id") == profile.get("id"):
         public_url = supabase.storage.from_(bucket).get_public_url(file_name)
         supabase.table("profiles").update({"avatar_url": public_url}).eq("id", profile["id"]).execute()
 
+        st.session_state["force_refresh"] = datetime.utcnow().timestamp()
         st.success("Profile picture updated successfully and is public.")
         st.rerun()
+
+# re-fetch profile to reflect latest update
+if "force_refresh" in st.session_state:
+    res = supabase.table("profiles").select("*").eq("username", username).execute()
+    if res.data:
+        profile = res.data[0]
 
 mag = supabase.table("magicals").select("*").eq("owner_id", profile["id"]).order("timestamp", desc=True).execute()
 videos = mag.data if mag.data else []
