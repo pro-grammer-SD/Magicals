@@ -33,7 +33,7 @@ user = st.session_state.get("user")
 if user and user.get("id") == profile.get("id"):
     uploaded = st.file_uploader("Change Profile Picture", type=["jpg", "jpeg", "png"])
     if uploaded and st.button("Upload New Avatar"):
-        bucket = "profile_pic"
+        bucket = "profile_pics"
         ext = uploaded.name.split(".")[-1].lower()
         file_name = f"{username}_{int(datetime.utcnow().timestamp())}.{ext}"
         data = uploaded.read()
