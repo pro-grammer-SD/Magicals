@@ -24,7 +24,6 @@ if "user" in st.session_state:
     if st.button("Logout"):
         del cookies
         st.session_state.clear()
-        st.rerun()
 
 mode = st.radio("Select mode", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
 email = st.text_input("Email")
