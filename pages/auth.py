@@ -9,24 +9,29 @@ if not cookies.ready():
 st.set_page_config(page_title="Login / Signup", layout="centered")
 st.title("🔐 Login / Signup")
 
-if "user" not in st.session_state and cookies.get("access_token"):
-    try:
-        session = supabase.auth.get_user(cookies.get("access_token"))
-        if session and session.user:
-            st.session_state.user = {"id": session.user.id, "email": session.user.email}
-            st.success(f"Welcome back, {session.user.email}!")
-    except Exception:
-        cookies["access_token"] = ""
-        cookies.save()
+# Auto-login check
+if "user" not in st.session_state:
+    token = cookies.get("access_token")
+    if token and token != "LOGGED_OUT":
+        try:
+            session = supabase.auth.get_user(token)
+            if session and session.user:
+                st.session_state.user = {"id": session.user.id, "email": session.user.email}
+                st.success(f"Welcome back, {session.user.email}!")
+        except Exception:
+            cookies["access_token"] = "LOGGED_OUT"
+            cookies.save()
 
+# If logged in
 if "user" in st.session_state:
     st.success(f"Logged in as {st.session_state.user['email']}")
     if st.button("Logout"):
-        cookies["access_token"] = ""
+        cookies["access_token"] = "LOGGED_OUT"
         cookies.save()
         st.session_state.clear()
         st.rerun()
 
+# Auth UI
 mode = st.radio("Select mode", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
 email = st.text_input("Email")
 password = st.text_input("Password", type="password")
