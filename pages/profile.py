@@ -24,7 +24,8 @@ if not res.data:
     st.stop()
 
 profile = res.data[0]
-st.image(profile.get("avatar_url") or str(DEFAULT_AVATAR), width=128)
+avatar_url = profile.get("avatar_url") or str(DEFAULT_AVATAR)
+st.image(avatar_url, width=128)
 st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio", ""))
 
@@ -32,12 +33,7 @@ user = st.session_state.get("user")
 if user and user.get("id") == profile.get("id"):
     uploaded = st.file_uploader("Change Profile Picture", type=["jpg", "jpeg", "png"])
     if uploaded and st.button("Upload New Avatar"):
-        bucket = "avatars"
-        try:
-            supabase.storage.create_bucket(bucket, public=True)
-        except Exception:
-            pass
-
+        bucket = "profile_pic"
         ext = uploaded.name.split(".")[-1].lower()
         file_name = f"{username}_{int(datetime.utcnow().timestamp())}.{ext}"
         data = uploaded.read()
@@ -45,13 +41,13 @@ if user and user.get("id") == profile.get("id"):
         supabase.storage.from_(bucket).upload(
             file_name,
             data,
-            {"upsert": "true", "content-type": f"image/{ext}"}
+            {"upsert": True, "content-type": f"image/{ext}"}
         )
 
         public_url = supabase.storage.from_(bucket).get_public_url(file_name)
         supabase.table("profiles").update({"avatar_url": public_url}).eq("id", profile["id"]).execute()
 
-        st.success("Profile picture updated and made public.")
+        st.success("Profile picture updated successfully and is public.")
         st.rerun()
 
 mag = supabase.table("magicals").select("*").eq("owner_id", profile["id"]).order("timestamp", desc=True).execute()
@@ -61,6 +57,6 @@ st.markdown(f"**Total likes:** {total_likes}")
 
 for v in videos:
     st.markdown(f"### {v.get('title')}")
-    st.video(v.get("path"))
+    st.video(v.get("url"))
     st.markdown(f"❤️ {v.get('likes', 0)}")
     
