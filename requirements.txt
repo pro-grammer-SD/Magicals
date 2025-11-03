@@ -1,7 +1,9 @@
 streamlit
+streamlit-js-eval
 streamlit-shadcn-ui
 supabase
 python-dotenv
+pycryptodome
 toml
 manim
 opennsfw2
