@@ -41,7 +41,12 @@ if user and user.get("id") == profile.get("id"):
         ext = uploaded.name.split(".")[-1].lower()
         file_name = f"{username}_{int(datetime.utcnow().timestamp())}.{ext}"
         data = uploaded.read()
-        supabase.storage.from_(bucket).upload(file_name, data, {"upsert": True, "content-type": f"image/{ext}"})
+
+        supabase.storage.from_(bucket).upload(
+            file_name,
+            data,
+            {"upsert": "true", "content-type": f"image/{ext}"}
+        )
 
         public_url = supabase.storage.from_(bucket).get_public_url(file_name)
         supabase.table("profiles").update({"avatar_url": public_url}).eq("id", profile["id"]).execute()
