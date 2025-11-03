@@ -22,8 +22,10 @@ if "user" not in st.session_state and cookies.get("access_token"):
 if "user" in st.session_state:
     st.success(f"Logged in as {st.session_state.user['email']}")
     if st.button("Logout"):
-        del cookies
+        cookies["access_token"] = ""
+        cookies.save()
         st.session_state.clear()
+        st.rerun()
 
 mode = st.radio("Select mode", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
 email = st.text_input("Email")
