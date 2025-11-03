@@ -24,7 +24,10 @@ if not res.data:
     st.stop()
 
 profile = res.data[0]
-avatar_url = (profile.get("avatar_url") or str(DEFAULT_AVATAR)) + f"?v={int(datetime.utcnow().timestamp())}"
+avatar_url = profile.get("avatar_url") or str(DEFAULT_AVATAR)
+if avatar_url.startswith("http"):
+    avatar_url += f"?v={int(datetime.utcnow().timestamp())}"
+
 st.image(avatar_url, width=128)
 st.markdown(f"# @{profile.get('username')}")
 st.markdown(profile.get("bio", ""))
@@ -51,7 +54,6 @@ if user and user.get("id") == profile.get("id"):
         st.success("Profile picture updated successfully and is public.")
         st.rerun()
 
-# re-fetch profile to reflect latest update
 if "force_refresh" in st.session_state:
     res = supabase.table("profiles").select("*").eq("username", username).execute()
     if res.data:
